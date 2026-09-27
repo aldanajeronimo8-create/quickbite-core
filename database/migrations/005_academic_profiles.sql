@@ -46,11 +46,6 @@ ALTER TABLE quickbite.user_profiles
   ADD CONSTRAINT user_profiles_identification_number_check
   CHECK (identification_number IS NULL OR length(trim(identification_number)) > 0);
 
-ALTER TABLE quickbite.academic_courses
-  ADD CONSTRAINT academic_courses_section_grade_fk
-  FOREIGN KEY (section_id, grade_id)
-  REFERENCES quickbite.academic_sections(id), quickbite.academic_grades(id);
-
 CREATE INDEX IF NOT EXISTS idx_courses_section_grade_active
   ON quickbite.academic_courses(section_id, grade_id, active, name);
 
