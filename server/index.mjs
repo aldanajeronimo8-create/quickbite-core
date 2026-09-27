@@ -8,7 +8,9 @@ const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const port = Number(process.env.PORT ?? 3000);
 const origins = new Set((process.env.ALLOWED_ORIGINS ?? 'http://localhost:5173').split(',').map((value) => value.trim()));
 const accessTtlSeconds = 30 * 60;
-const refreshTtlDays = 30;
+// A profile can be reopened without reauthentication for at least 31 days.
+// Access tokens remain short-lived; only the revocable refresh session has this TTL.
+const refreshTtlDays = 31;
 
 const json = (response, status, body, requestId) => response.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'x-request-id': requestId }).end(JSON.stringify(body));
 const hashPassword = (password) => { const salt = randomBytes(16).toString('hex'); return `${salt}:${scryptSync(password, salt, 64).toString('hex')}`; };
@@ -20,7 +22,7 @@ const issueAccess = (user) => sign({ sub: user.id, role: user.role, exp: Math.fl
 const readJson = async (request) => { let body = ''; for await (const chunk of request) body += chunk; try { return body ? JSON.parse(body) : {}; } catch { throw new Error('invalid_json'); } };
 const authenticate = (request) => { const value = request.headers.authorization; if (!value?.startsWith('Bearer ')) throw new Error('missing_token'); return verify(value.slice(7)); };
 const publicUser = (row) => ({ id: row.id, email: row.email, role: row.role, fullName: row.full_name });
-async function issueSession(client, user) { const refreshToken = randomBytes(48).toString('base64url'); await client.query('INSERT INTO quickbite.auth_sessions(user_id,refresh_token_hash,expires_at) VALUES($1,$2,now() + interval \'30 days\')', [user.id, hashToken(refreshToken)]); return { accessToken: issueAccess(user), refreshToken, expiresIn: accessTtlSeconds, user: publicUser(user) }; }
+async function issueSession(client, user) { const refreshToken = randomBytes(48).toString('base64url'); await client.query("INSERT INTO quickbite.auth_sessions(user_id,refresh_token_hash,expires_at) VALUES($1,$2,now() + ($3 * interval '1 day'))", [user.id, hashToken(refreshToken), refreshTtlDays]); return { accessToken: issueAccess(user), refreshToken, expiresIn: accessTtlSeconds, user: publicUser(user) }; }
 async function route(request, response, requestId) {
  const url = new URL(request.url, `http://${request.headers.host}`); const method = request.method;
  if (method === 'GET' && url.pathname === '/health') { await pool.query('SELECT 1'); return json(response, 200, { status: 'ok' }, requestId); }

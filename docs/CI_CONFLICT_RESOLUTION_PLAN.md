@@ -13,6 +13,10 @@ Resolver el conflicto de `.github/workflows/ci.yml` sin encadenar cambios de com
 5. **Validar antes de integrar.** Revisar el diff del workflow contra la rama destino, validar sintaxis y comprobar que `pnpm install --frozen-lockfile`, typecheck, lint, test y build siguen presentes.
 6. **Rollback.** Si un workflow futuro falla, revertir únicamente el commit/PR dedicado al workflow; no revertir migraciones, API o frontend Core.
 
+## Regla aplicada a este conflicto
+
+No se fija `version` dentro de `pnpm/action-setup`: la rama destino no lo define y añadirlo crea un conflicto de línea innecesario. El workflow conserva `run_install: false` y deja que la configuración de la rama destino determine la versión de pnpm.
+
 ## Alcance de esta corrección
 
 Esta corrección no cambia jobs, secretos, versiones de herramientas, scripts ni comportamiento de CI. Su único efecto es retirar el cambio concurrente sobre el archivo que GitHub reportó como conflictivo.
