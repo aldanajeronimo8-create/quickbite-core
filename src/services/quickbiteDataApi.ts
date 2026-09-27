@@ -105,10 +105,9 @@ function mapOrder(row: ApiOrderListRow): Order {
       order_id: row.id,
       product_id: item.product_id,
       product_name_snapshot: item.product_name,
-      unit_price: Number(item.unit_price),
+      price: Number(item.unit_price),
       quantity: item.quantity,
-      line_total: Number(item.line_total),
-      product: null,
+      product: undefined,
     })),
   };
 }
