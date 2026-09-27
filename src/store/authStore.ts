@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { requireSupabaseClient, type Profile } from '../lib/supabase';
+import { apiLogin, apiLogout, getStoredAuthSession, getValidAccessToken } from '../services/quickbiteAuth';
 import { writeAuditLog } from '../lib/auditLog';
 import { getProfile } from '../repositories/quickbiteRepository';
 import { canAccessAdmin } from '../lib/access';
@@ -31,21 +32,26 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   signIn: async (email, password) => {
     clearDelegatedStudentContext();
-    const supabase = requireSupabaseClient();
     const normalizedEmail = email.trim().toLowerCase();
-    const { data, error } = await supabase.auth.signInWithPassword({ email: normalizedEmail, password });
-    if (error || !data.user) {
-      writeAuditLog({ action: 'auth.error', actorEmail: normalizedEmail, metadata: { reason: error?.message } });
+    let apiSession;
+    try { apiSession = await apiLogin(normalizedEmail, password); }
+    catch (error) {
+      writeAuditLog({ action: 'auth.error', actorEmail: normalizedEmail, metadata: { reason: error instanceof Error ? error.message : 'api_login_failed' } });
       throw new Error('Correo o contraseña incorrectos.');
     }
-    const profile = await getProfile(data.user.id);
+    const apiUser = apiSession.user;
+    const profile: Profile = {
+      id: apiUser.id, email: apiUser.email, full_name: apiUser.full_name ?? apiUser.email,
+      role: apiUser.role as Profile['role'], ti: null, created_at: new Date().toISOString(),
+      section_id: apiUser.section_id, grade_id: apiUser.grade_id, course_id: apiUser.course_id,
+    };
     if (!profile || !canAccessAdmin(profile.role)) {
-      await supabase.auth.signOut();
+      await apiLogout();
       writeAuditLog({ action: 'auth.error', actorEmail: normalizedEmail, metadata: { reason: 'not_admin' } });
       throw new Error('No tienes permisos de administrador.');
     }
     writeAuditLog({ action: 'auth.login', actorId: profile.id, actorEmail: profile.email });
-    set({ user: profile, session: { token: data.session?.access_token ?? '' }, loading: false });
+    set({ user: profile, session: { token: apiSession.accessToken }, loading: false });
   },
 
   signUp: async (email, password, fullName, inviteCode) => {
@@ -75,22 +81,23 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   signOut: async () => {
     clearDelegatedStudentContext();
-    const supabase = requireSupabaseClient();
-    const { data } = await supabase.auth.getUser();
-    const profile = data.user ? await getProfile(data.user.id) : null;
+    const profile = useAuthStore.getState().user;
     if (profile) writeAuditLog({ action: 'auth.logout', actorId: profile.id, actorEmail: profile.email });
-    await supabase.auth.signOut();
+    await apiLogout();
     set({ user: null, session: null, loading: false });
   },
 
   checkSession: async () => {
     try {
-      const supabase = requireSupabaseClient();
-      const { data } = await supabase.auth.getSession();
-      const userId = data.session?.user.id;
-      if (!userId) { set({ loading: false, user: null, session: null }); return; }
-      const profile = await getProfile(userId);
-      set({ user: profile, session: profile ? { token: data.session?.access_token ?? '' } : null, loading: false });
+      const stored = getStoredAuthSession();
+      const token = await getValidAccessToken();
+      if (!stored || !token) { set({ loading: false, user: null, session: null }); return; }
+      const profile: Profile = {
+        id: stored.user.id, email: stored.user.email, full_name: stored.user.full_name ?? stored.user.email,
+        role: stored.user.role as Profile['role'], ti: null, created_at: new Date().toISOString(),
+        section_id: stored.user.section_id, grade_id: stored.user.grade_id, course_id: stored.user.course_id,
+      };
+      set({ user: profile, session: { token }, loading: false });
     } catch {
       set({ loading: false, user: null, session: null });
     }
