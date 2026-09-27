@@ -10,17 +10,18 @@ import {
 let syncRunning = false;
 
 async function execute(item: PendingSyncOperation) {
-  await updateSyncOperation({ ...item, status: 'syncing', attempts: item.attempts + 1 });
+  const attempt = item.attempts + 1;
+  await updateSyncOperation({ ...item, status: 'syncing', attempts: attempt });
   try {
     if (item.type === 'create_order') {
-      await createCoreOrder(item.payload as Parameters<typeof createCoreOrder>[0]);
+      await createCoreOrder(item.payload as Parameters<typeof createCoreOrder>[0], item.idempotencyKey);
     }
     await removeSyncOperation(item.id);
   } catch (error) {
     await updateSyncOperation({
       ...item,
       status: 'failed',
-      attempts: item.attempts + 1,
+      attempts: attempt,
       lastError: error instanceof Error ? error.message : String(error),
     });
   }
