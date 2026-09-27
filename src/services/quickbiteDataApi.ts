@@ -123,9 +123,8 @@ export async function loadCoreData() {
   return { ...mapped, orders: orders.map(mapOrder) };
 }
 
-export async function createCoreOrder(order: NewOrder) {
-  const token = await authRequired();
-  const idempotencyKey = crypto.randomUUID();
+export async function createCoreOrder(order: NewOrder, existingIdempotencyKey?: string) {
+  const idempotencyKey = existingIdempotencyKey ?? crypto.randomUUID();
   const payload = {
     idempotencyKey,
     items: (order.order_items ?? []).map((item) => ({
@@ -135,6 +134,7 @@ export async function createCoreOrder(order: NewOrder) {
     notes: order.notes ?? null,
     paymentMethod: order.payment_method ?? 'pending',
   };
+
   if (!navigator.onLine) {
     await enqueueSyncOperation({
       type: 'create_order',
@@ -150,19 +150,14 @@ export async function createCoreOrder(order: NewOrder) {
       pickup_code: '',
     };
   }
+
+  const token = await authRequired();
   const result = await quickbiteApi<ApiOrder>('/v1/orders', {
     method: 'POST',
     accessToken: token,
-    body: {
-      idempotencyKey,
-      items: (order.order_items ?? []).map((item) => ({
-        product_id: item.product_id,
-        quantity: item.quantity,
-      })),
-      notes: order.notes ?? null,
-      paymentMethod: order.payment_method ?? 'pending',
-    },
+    body: payload,
   });
+
   return {
     id: result.order_id,
     status: result.status,
