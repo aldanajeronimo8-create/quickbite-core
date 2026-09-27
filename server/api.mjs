@@ -169,11 +169,11 @@ async function route(req, res) {
            ) ORDER BY oi.id) FILTER (WHERE oi.id IS NOT NULL), '[]'::jsonb) AS items
            FROM quickbite.orders o
            LEFT JOIN quickbite.order_items oi ON oi.order_id = o.id
-          WHERE o.user_id = $1
+          WHERE ($2 IN ('admin', 'staff') OR o.user_id = $1)
           GROUP BY o.id
           ORDER BY o.created_at DESC
           LIMIT 100`,
-        [actor.user_id],
+        [actor.user_id, actor.role],
       );
       return send(res, 200, { data: result.rows, requestId }, requestId);
     }
