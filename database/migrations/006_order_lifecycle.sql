@@ -40,6 +40,7 @@ LANGUAGE plpgsql
 AS $$
 DECLARE
   v_order quickbite.orders%ROWTYPE;
+  v_previous_status TEXT;
   v_actor_role TEXT;
 BEGIN
   IF p_order_id IS NULL OR p_actor_user_id IS NULL THEN
@@ -96,6 +97,8 @@ BEGIN
     RAISE EXCEPTION 'role_cannot_change_order_status' USING ERRCODE = '42501';
   END IF;
 
+  v_previous_status := v_order.status;
+
   UPDATE quickbite.orders
   SET
     status = p_next_status,
@@ -121,7 +124,7 @@ BEGIN
     'order',
     v_order.id,
     jsonb_build_object(
-      'from', CASE WHEN v_order.status = p_next_status THEN p_next_status ELSE NULL END,
+      'from', v_previous_status,
       'to', p_next_status
     )
   );
