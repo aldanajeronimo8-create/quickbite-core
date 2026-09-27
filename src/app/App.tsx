@@ -9,6 +9,7 @@ import { useDataStore } from '../store/dataStore';
 import { ErrorBoundary } from './components/system/ErrorBoundary';
 import { hasSupabaseConfig, needsFirstRunSetup } from '../config/appConfig';
 import { isQuickBiteApiConfigured } from '../services/quickbiteApi';
+import { startOfflineSync } from '../services/offlineSyncEngine';
 import { getAuthContext, getSupabaseClientForContext } from '../lib/supabase';
 import { canAccessAdmin, canAccessParent, canAccessStudent } from '../lib/access';
 import { UserThemePreference } from './components/UserThemePreference';
@@ -22,6 +23,8 @@ function syncVisualInterfaceScope(pathname: string) {
   else delete body.dataset.qbInterface;
   document.documentElement.classList.toggle('qb-public-home', pathname === '/');
 }
+
+function OfflineSyncBootstrap() { useEffect(() => startOfflineSync(), []); return null; }
 
 function SessionRestorer() {
   useEffect(() => {
@@ -75,6 +78,6 @@ function AppContent() {
   useEffect(() => { if ((!hasSupabase && !hasApi) || !user) return; void loadData({ silent: true }); }, [hasSupabase, hasApi, loadData, user]);
   useEffect(() => { if (!hasSupabase || !user) return; const cleanupRealtime = subscribeRealtime(); return () => cleanupRealtime(); }, [hasSupabase, subscribeRealtime, user]);
   useEffect(() => { syncVisualInterfaceScope(router.state.location.pathname); return router.subscribe((state) => syncVisualInterfaceScope(state.location.pathname)); }, []);
-  return <ErrorBoundary><VisualThemeProvider>{needsSetup ? <SetupWizardPage /> : <><RouterProvider router={router} /><AdminStudentPreviewBar /><SessionRestorer />{user && <UserThemePreference />}<ThemePreferenceBoundary /></>}<Toaster position="top-center" /></VisualThemeProvider></ErrorBoundary>;
+  return <ErrorBoundary><VisualThemeProvider>{needsSetup ? <SetupWizardPage /> : <><RouterProvider router={router} /><AdminStudentPreviewBar /><OfflineSyncBootstrap /><SessionRestorer />{user && <UserThemePreference />}<ThemePreferenceBoundary /></>}<Toaster position="top-center" /></VisualThemeProvider></ErrorBoundary>;
 }
 export default AppContent;
