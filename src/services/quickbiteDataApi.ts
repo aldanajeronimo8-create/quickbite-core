@@ -2,6 +2,7 @@ import type { Category, Order, Product } from '../lib/supabase';
 import type { NewOrder } from '../repositories/quickbiteRepository';
 import { getValidAccessToken } from './quickbiteAuth';
 import { quickbiteApi } from './quickbiteApi';
+import { enqueueSyncOperation } from './offlineSyncStore';
 
 interface MenuRow {
   id: string;
@@ -125,6 +126,30 @@ export async function loadCoreData() {
 export async function createCoreOrder(order: NewOrder) {
   const token = await authRequired();
   const idempotencyKey = crypto.randomUUID();
+  const payload = {
+    idempotencyKey,
+    items: (order.order_items ?? []).map((item) => ({
+      product_id: item.product_id,
+      quantity: item.quantity,
+    })),
+    notes: order.notes ?? null,
+    paymentMethod: order.payment_method ?? 'pending',
+  };
+  if (!navigator.onLine) {
+    await enqueueSyncOperation({
+      type: 'create_order',
+      idempotencyKey,
+      payload: order as unknown as Record<string, unknown>,
+    });
+    return {
+      id: idempotencyKey,
+      status: 'pending' as const,
+      payment_status: 'pending' as const,
+      subtotal: Number(order.total ?? 0),
+      total: Number(order.total ?? 0),
+      pickup_code: '',
+    };
+  }
   const result = await quickbiteApi<ApiOrder>('/v1/orders', {
     method: 'POST',
     accessToken: token,
