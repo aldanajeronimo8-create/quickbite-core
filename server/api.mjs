@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { createSessionToken, hashPassword, hashToken, verifyPassword } from './passwordCrypto.mjs';
+import { createSessionToken, hashToken, verifyPassword } from './passwordCrypto.mjs';
 import { createServer } from 'node:http';
 import { Pool } from 'pg';
 
@@ -54,7 +54,7 @@ async function authenticate(req, client) {
        JOIN quickbite.users u ON u.id = s.user_id
       WHERE s.token_hash = $1
         AND s.revoked_at IS NULL
-        AND s.expires_at > now()
+        AND s.access_expires_at > now()
         AND u.active = true
       LIMIT 1`,
     [hashToken(token)],
@@ -86,9 +86,40 @@ async function route(req, res) {
       const result = await client.query('SELECT id, email, role, active, password_hash FROM quickbite.users WHERE lower(email)=lower($1) LIMIT 1', [email]);
       const user = result.rows[0];
       if (!user || !user.active || !(await verifyPassword(password, user.password_hash))) return send(res, 401, { error: 'invalid_credentials', requestId }, requestId);
-      const token = createSessionToken();
-      await client.query('INSERT INTO quickbite.auth_sessions (user_id, token_hash, expires_at, user_agent) VALUES ($1,$2,now()+interval \'7 days\',$3)', [user.id, hashToken(token), req.headers['user-agent'] ?? null]);
-      return send(res, 200, { data: { accessToken: token, user: { id: user.id, email: user.email, role: user.role } }, requestId }, requestId);
+      const accessToken = createSessionToken();
+      const refreshToken = createSessionToken();
+      await client.query(
+        'INSERT INTO quickbite.auth_sessions (user_id, token_hash, refresh_token_hash, access_expires_at, refresh_expires_at, expires_at, user_agent) VALUES ($1,$2,$3,now()+interval \'30 minutes\',now()+interval \'30 days\',now()+interval \'30 days\',$4)',
+        [user.id, hashToken(accessToken), hashToken(refreshToken), req.headers['user-agent'] ?? null],
+      );
+      return send(res, 200, { data: { accessToken, refreshToken, accessTokenExpiresIn: 1800, refreshTokenExpiresIn: 2592000, user: { id: user.id, email: user.email, role: user.role } }, requestId }, requestId);
+    }
+
+    if (req.method === 'POST' && url.pathname === '/v1/auth/refresh') {
+      const body = await readJson(req);
+      const refreshToken = typeof body.refreshToken === 'string' ? body.refreshToken.trim() : '';
+      if (!refreshToken) return send(res, 400, { error: 'refresh_token_required', requestId }, requestId);
+      const session = await client.query(
+        'SELECT id, user_id FROM quickbite.auth_sessions WHERE refresh_token_hash=$1 AND revoked_at IS NULL AND refresh_expires_at > now() LIMIT 1',
+        [hashToken(refreshToken)],
+      );
+      if (!session.rowCount) return send(res, 401, { error: 'invalid_refresh_token', requestId }, requestId);
+      const current = session.rows[0];
+      const nextAccessToken = createSessionToken();
+      const nextRefreshToken = createSessionToken();
+      await client.query('BEGIN');
+      try {
+        await client.query('UPDATE quickbite.auth_sessions SET revoked_at=now(), rotated_at=now() WHERE id=$1', [current.id]);
+        await client.query(
+          'INSERT INTO quickbite.auth_sessions (user_id, token_hash, refresh_token_hash, access_expires_at, refresh_expires_at, expires_at, rotated_from_session_id) VALUES ($1,$2,$3,now()+interval \'30 minutes\',now()+interval \'30 days\',now()+interval \'30 days\',$4)',
+          [current.user_id, hashToken(nextAccessToken), hashToken(nextRefreshToken), current.id],
+        );
+        await client.query('COMMIT');
+      } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+      }
+      return send(res, 200, { data: { accessToken: nextAccessToken, refreshToken: nextRefreshToken, accessTokenExpiresIn: 1800, refreshTokenExpiresIn: 2592000 }, requestId }, requestId);
     }
 
     if (req.method === 'POST' && url.pathname === '/v1/auth/logout') {
