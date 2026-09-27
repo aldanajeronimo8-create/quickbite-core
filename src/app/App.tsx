@@ -8,6 +8,7 @@ import { useAuthStore } from '../store/authStore';
 import { useDataStore } from '../store/dataStore';
 import { ErrorBoundary } from './components/system/ErrorBoundary';
 import { hasSupabaseConfig, needsFirstRunSetup } from '../config/appConfig';
+import { isQuickBiteApiConfigured } from '../services/quickbiteApi';
 import { getAuthContext, getSupabaseClientForContext } from '../lib/supabase';
 import { canAccessAdmin, canAccessParent, canAccessStudent } from '../lib/access';
 import { UserThemePreference } from './components/UserThemePreference';
@@ -27,20 +28,14 @@ function SessionRestorer() {
     let cancelled = false;
     const restore = async () => {
       try {
-        const context = getAuthContext();
-        const supabaseClient = getSupabaseClientForContext(context);
-        if (!supabaseClient) return;
-        const { data, error } = await supabaseClient.auth.getSession();
-        if (error) throw error;
-        if (cancelled || !data.session?.user) return;
-        const { data: profile, error: profileError } = await supabaseClient.from('profiles').select('id,role').eq('id', data.session.user.id).maybeSingle();
-        if (profileError) throw profileError;
-        if (cancelled || !profile) return;
+        await useAuthStore.getState().checkSession();
+        if (cancelled) return;
+        const user = useAuthStore.getState().user;
         const pathname = window.location.pathname;
-        if (pathname !== '/' && pathname !== '/login') return;
-        if (context === 'admin' && canAccessAdmin(profile.role)) await router.navigate('/admin', { replace: true });
-        else if (context === 'user' && canAccessParent(profile.role)) await router.navigate('/parent/family', { replace: true });
-        else if (context === 'user' && canAccessStudent(profile.role)) await router.navigate('/menu', { replace: true });
+        if (!user || (pathname !== '/' && pathname !== '/login')) return;
+        if (canAccessAdmin(user.role)) await router.navigate('/admin', { replace: true });
+        else if (canAccessParent(user.role)) await router.navigate('/parent/family', { replace: true });
+        else if (canAccessStudent(user.role)) await router.navigate('/menu', { replace: true });
       } catch (error) { console.warn('[QuickBite] No se pudo restaurar la sesión automáticamente.', error); }
     };
     void restore();
@@ -48,7 +43,6 @@ function SessionRestorer() {
   }, []);
   return null;
 }
-
 function AdminStudentPreviewBar() {
   const user = useAuthStore((state) => state.user);
   const [active, setActive] = useState(false);
@@ -76,7 +70,8 @@ function AppContent() {
   const loadData = useDataStore((s) => s.loadData);
   const needsSetup = needsFirstRunSetup();
   const hasSupabase = hasSupabaseConfig();
-  useEffect(() => { if (hasSupabase) void checkSession(); }, [checkSession, hasSupabase]);
+  const hasApi = isQuickBiteApiConfigured();
+  useEffect(() => { if (hasApi) void checkSession(); }, [checkSession, hasApi]);
   useEffect(() => { if (!hasSupabase || !user) return; void loadData({ silent: true }); }, [hasSupabase, loadData, user]);
   useEffect(() => { if (!hasSupabase || !user) return; const cleanupRealtime = subscribeRealtime(); return () => cleanupRealtime(); }, [hasSupabase, subscribeRealtime, user]);
   useEffect(() => { syncVisualInterfaceScope(router.state.location.pathname); return router.subscribe((state) => syncVisualInterfaceScope(state.location.pathname)); }, []);
