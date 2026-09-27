@@ -1,6 +1,6 @@
 # QuickBite Core API (inicial)
 
-La API se inicia con `DATABASE_URL=... AUTH_JWT_SECRET=... pnpm api`.
+La API se inicia con `DATABASE_URL=... AUTH_JWT_SECRET=... node server/index.mjs`.
 
 | Método | Ruta | Auth | Estado |
 |---|---|---|---|
