@@ -72,7 +72,7 @@ function AppContent() {
   const hasSupabase = hasSupabaseConfig();
   const hasApi = isQuickBiteApiConfigured();
   useEffect(() => { if (hasApi) void checkSession(); }, [checkSession, hasApi]);
-  useEffect(() => { if (!hasSupabase || !user) return; void loadData({ silent: true }); }, [hasSupabase, loadData, user]);
+  useEffect(() => { if ((!hasSupabase && !hasApi) || !user) return; void loadData({ silent: true }); }, [hasSupabase, hasApi, loadData, user]);
   useEffect(() => { if (!hasSupabase || !user) return; const cleanupRealtime = subscribeRealtime(); return () => cleanupRealtime(); }, [hasSupabase, subscribeRealtime, user]);
   useEffect(() => { syncVisualInterfaceScope(router.state.location.pathname); return router.subscribe((state) => syncVisualInterfaceScope(state.location.pathname)); }, []);
   return <ErrorBoundary><VisualThemeProvider>{needsSetup ? <SetupWizardPage /> : <><RouterProvider router={router} /><AdminStudentPreviewBar /><SessionRestorer />{user && <UserThemePreference />}<ThemePreferenceBoundary /></>}<Toaster position="top-center" /></VisualThemeProvider></ErrorBoundary>;
