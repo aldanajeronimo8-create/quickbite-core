@@ -13,7 +13,7 @@ No se han ejecutado migraciones ni pruebas contra producción, ni se ha modifica
 - El único conjunto de migraciones está en `supabase/migrations/`, no en `database/migrations/`.
 - La configuración de contenedores solo inicia el frontend/nginx; no define PostgreSQL ni la API.
 - `src/lib/supabase.ts` crea clientes de Supabase usando variables públicas de Vite y los módulos de UI los consumen directamente.
-- El flujo CI de E2E usa una URL de Supabase y secretos de Supabase. Esto es incompatible con la validación aislada solicitada para QuickBite Core.
+- El flujo E2E autenticado existente usa una URL de Supabase y secretos de Supabase. El CI se limitó a un smoke test local de primer arranque para que los pull requests no dependan de servicios ni credenciales remotas.
 - No hay binario de Docker, cliente `psql`/`pg_isready`, ni CLI de Supabase disponibles en este entorno. Además, estas migraciones dependen de los esquemas gestionados `auth` y de funciones de Supabase, por lo que PostgreSQL plano no es un sustituto fiel.
 
 ## Clasificación de Supabase restante
@@ -22,7 +22,7 @@ No se han ejecutado migraciones ni pruebas contra producción, ni se ha modifica
 | --- | --- | --- |
 | B — incompatible con la arquitectura final | `src/lib/supabase.ts`, `src/store/authStore.ts`, `src/repositories/*.ts`, páginas y componentes que importan `requireSupabaseClient` | El frontend usa `@supabase/supabase-js` para autenticación, RPC, lecturas y realtime. Esto constituye acceso directo frontend → Supabase/PostgREST y debe reemplazarse por una API propia en una migración dedicada. |
 | B — incompatible con la arquitectura final | `supabase/functions/`, `supabase/migrations/`, scripts `connect-supabase.mjs` y `apply-migrations.mjs` | Implementan backend y persistencia específicos de Supabase, no el esquema/API PostgreSQL propio requerido. |
-| B — incompatible con la arquitectura final | `.github/workflows/backup.yml`, `health-check.yml`, `ci.yml` E2E | Operan contra secretos y URL de Supabase; no deben reutilizarse para pruebas aisladas del Core. |
+| B — incompatible con la arquitectura final | `.github/workflows/backup.yml`, `health-check.yml` y E2E autenticado | Operan contra secretos y URL de Supabase; no deben reutilizarse para pruebas aisladas del Core. El smoke test de CI no usa esos secretos. |
 | D — migración pendiente | autenticación, perfiles, menú, pedidos, wallet, pagos, notificaciones, auditoría y realtime | No hay contratos HTTP ni endpoints de la API Core para migrar estos módulos de forma segura. La prioridad es crítica para autenticación, menú, pedidos y wallet; alta para perfiles/roles/auditoría; media para realtime/notificaciones. |
 | A — temporalmente necesaria solo para la aplicación presente | `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` | Son necesarias para que el estado actual funcione, pero no pertenecen a la arquitectura final y no se deben copiar al Core. |
 | C — código muerto | No determinado sin ejecutar cobertura y trazas de la aplicación correcta. | No se elimina código por conjetura. |
