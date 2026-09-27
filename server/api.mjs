@@ -1,4 +1,5 @@
-import { createHash, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
+import { createSessionToken, hashPassword, hashToken, verifyPassword } from './passwordCrypto.mjs';
 import { createServer } from 'node:http';
 import { Pool } from 'pg';
 
@@ -18,10 +19,6 @@ const pool = new Pool({
   connectionTimeoutMillis: 5_000,
   ssl: process.env.DATABASE_SSL === 'disable' ? false : { rejectUnauthorized: false },
 });
-
-function hashToken(token) {
-  return createHash('sha256').update(token, 'utf8').digest('hex');
-}
 
 function send(res, status, body, requestId) {
   res.writeHead(status, {
@@ -81,6 +78,27 @@ async function route(req, res) {
   const client = await pool.connect();
 
   try {
+    if (req.method === 'POST' && url.pathname === '/v1/auth/login') {
+      const body = await readJson(req);
+      const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
+      const password = typeof body.password === 'string' ? body.password : '';
+      if (!email || !password) return send(res, 400, { error: 'credentials_required', requestId }, requestId);
+      const result = await client.query('SELECT id, email, role, active, password_hash FROM quickbite.users WHERE lower(email)=lower($1) LIMIT 1', [email]);
+      const user = result.rows[0];
+      if (!user || !user.active || !(await verifyPassword(password, user.password_hash))) return send(res, 401, { error: 'invalid_credentials', requestId }, requestId);
+      const token = createSessionToken();
+      await client.query('INSERT INTO quickbite.auth_sessions (user_id, token_hash, expires_at, user_agent) VALUES ($1,$2,now()+interval \'7 days\',$3)', [user.id, hashToken(token), req.headers['user-agent'] ?? null]);
+      return send(res, 200, { data: { accessToken: token, user: { id: user.id, email: user.email, role: user.role } }, requestId }, requestId);
+    }
+
+    if (req.method === 'POST' && url.pathname === '/v1/auth/logout') {
+      const actor = await authenticate(req, client);
+      if (!actor) return send(res, 401, { error: 'unauthorized', requestId }, requestId);
+      const token = (req.headers.authorization || '').slice(7).trim();
+      await client.query('UPDATE quickbite.auth_sessions SET revoked_at = COALESCE(revoked_at, now()) WHERE token_hash = $1 AND user_id = $2', [hashToken(token), actor.user_id]);
+      return send(res, 204, null, requestId);
+    }
+
     if (req.method === 'GET' && url.pathname === '/health') {
       await client.query('SELECT 1');
       return send(res, 200, { ok: true, service: 'quickbite-api', requestId }, requestId);
