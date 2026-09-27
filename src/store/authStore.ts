@@ -3,7 +3,6 @@ import { requireSupabaseClient, type Profile } from '../lib/supabase';
 import { apiLogin, apiLogout, getStoredAuthSession, getValidAccessToken } from '../services/quickbiteAuth';
 import { writeAuditLog } from '../lib/auditLog';
 import { getProfile } from '../repositories/quickbiteRepository';
-import { canAccessAdmin } from '../lib/access';
 
 const ACTIVE_STUDENT_STORAGE_KEY = 'quickbite.parent.activeStudent';
 
@@ -45,11 +44,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       role: apiUser.role as Profile['role'], ti: null, created_at: new Date().toISOString(),
       section_id: apiUser.section_id, grade_id: apiUser.grade_id, course_id: apiUser.course_id,
     };
-    if (!profile || !canAccessAdmin(profile.role)) {
-      await apiLogout();
-      writeAuditLog({ action: 'auth.error', actorEmail: normalizedEmail, metadata: { reason: 'not_admin' } });
-      throw new Error('No tienes permisos de administrador.');
-    }
+    if (!profile) { await apiLogout(); throw new Error('No se pudo cargar tu perfil de QuickBite.'); }
     writeAuditLog({ action: 'auth.login', actorId: profile.id, actorEmail: profile.email });
     set({ user: profile, session: { token: apiSession.accessToken }, loading: false });
   },
