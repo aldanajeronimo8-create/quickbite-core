@@ -4,6 +4,8 @@ import { writeAuditLog } from '../lib/auditLog';
 import { appConfig } from '../config/appConfig';
 import * as repo from '../repositories/quickbiteRepository';
 import { createAdminManagedUser, updateAdminManagedUser, updateProtectedAdminCredentials as updateProtectedAdminCredentialsViaApi } from '../services/adminUserService';
+import { isQuickBiteApiConfigured } from '../services/quickbiteApi';
+import { createCoreOrder, loadCoreData } from '../services/quickbiteDataApi';
 
 const REALTIME_TABLES = [
   'profiles',
@@ -81,45 +83,28 @@ export const useDataStore = create<DataState>((set, get) => ({
   loadData: async (options) => {
     if (!options?.silent) set({ loading: true });
     try {
+      if (isQuickBiteApiConfigured()) {
+        const core = await loadCoreData();
+        set({ categories: core.categories, products: core.products, orders: core.orders, users: [] });
+        return;
+      }
+
       const isAdminContext = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin');
       const client = requireSupabaseClient();
       const { data: sessionData } = await client.auth.getSession();
       const isAuthenticated = Boolean(sessionData.session?.user);
-
-      const [categories, products] = await Promise.all([
-        repo.listCategories(),
-        repo.listProducts(),
-      ]);
-
+      const [categories, products] = await Promise.all([repo.listCategories(), repo.listProducts()]);
       let allOrders: Order[] = [];
       if (isAuthenticated) {
-        try {
-          allOrders = await repo.listOrders();
-        } catch (error) {
-          writeAuditLog({
-            action: 'app.error',
-            metadata: { source: 'data_load.orders', message: String(error) },
-          });
-        }
+        try { allOrders = await repo.listOrders(); }
+        catch (error) { writeAuditLog({ action: 'app.error', metadata: { source: 'data_load.orders', message: String(error) } }); }
       }
-
       let users: Profile[] = [];
       if (isAdminContext && isAuthenticated) {
-        try {
-          users = await repo.listProfiles();
-        } catch (error) {
-          writeAuditLog({
-            action: 'app.error',
-            metadata: { source: 'data_load.profiles', message: String(error) },
-          });
-        }
+        try { users = await repo.listProfiles(); }
+        catch (error) { writeAuditLog({ action: 'app.error', metadata: { source: 'data_load.profiles', message: String(error) } }); }
       }
-
-      const orders = isAdminContext
-        ? allOrders
-        : allOrders;
-
-      set({ categories, products, orders, users });
+      set({ categories, products, orders: allOrders, users });
     } finally {
       if (!options?.silent) set({ loading: false });
     }
@@ -157,7 +142,9 @@ export const useDataStore = create<DataState>((set, get) => ({
     // The order transaction is the only operation on the critical path.
     // Audit and data refresh are intentionally detached so the buyer sees
     // confirmation as soon as the atomic database write succeeds.
-    const orderNumber = await repo.createOrder(orderData);
+    const orderNumber = isQuickBiteApiConfigured()
+      ? (await createCoreOrder(orderData)).id
+      : await repo.createOrder(orderData);
 
     void remoteAudit({
       action: 'order.create',
