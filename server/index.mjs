@@ -1,4 +1,4 @@
-import { createHash, randomBytes, timingSafeEqual, createHmac, randomUUID } from 'node:crypto';
+import { createHash, randomBytes, timingSafeEqual, createHmac, randomUUID, scryptSync } from 'node:crypto';
 import http from 'node:http';
 import { Pool } from 'pg';
 
