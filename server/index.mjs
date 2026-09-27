@@ -1,4 +1,4 @@
-import { createHash, randomBytes, scryptSync, timingSafeEqual, createHmac, randomUUID } from 'node:crypto';
+import { createHash, randomBytes, timingSafeEqual, createHmac, randomUUID } from 'node:crypto';
 import http from 'node:http';
 import { Pool } from 'pg';
 
@@ -13,7 +13,6 @@ const accessTtlSeconds = 30 * 60;
 const refreshTtlDays = 31;
 
 const json = (response, status, body, requestId) => response.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'x-request-id': requestId }).end(JSON.stringify(body));
-const hashPassword = (password) => { const salt = randomBytes(16).toString('hex'); return `${salt}:${scryptSync(password, salt, 64).toString('hex')}`; };
 const verifyPassword = (password, stored) => { const [salt, digest] = stored.split(':'); const actual = scryptSync(password, salt, 64); return timingSafeEqual(actual, Buffer.from(digest, 'hex')); };
 const hashToken = (value) => createHash('sha256').update(value).digest('hex');
 const sign = (payload) => { const encoded = Buffer.from(JSON.stringify(payload)).toString('base64url'); const signature = createHmac('sha256', process.env.AUTH_JWT_SECRET).update(encoded).digest('base64url'); return `${encoded}.${signature}`; };
