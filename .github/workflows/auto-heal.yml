@@ -16,9 +16,9 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  QUICKBITE_PRODUCTION_URL: https://quick-bite-snowy-ten.vercel.app/
+  QUICKBITE_PRODUCTION_URL: https://quickbite-core.vercel.app/
   VERCEL_ORG_ID: team_RO7iBCvGd2vw4GbiV9vthNdh
-  VERCEL_PROJECT_ID: prj_Udwcqe1402DfGaXdIFOIO3pTFf5f
+  VERCEL_PROJECT_ID: prj_nR5Clr0GKvBvJR5hD9Kyg0mCJwwV
 
 jobs:
   production-watchdog:
