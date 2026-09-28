@@ -3,7 +3,7 @@ name: Apply Core migrations 021-023
 on:
   push:
     branches:
-      - ops/apply-core-migrations-021-023
+      - main
   workflow_dispatch:
 
 permissions:
