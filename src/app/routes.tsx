@@ -1,5 +1,9 @@
 import { createBrowserRouter } from 'react-router-dom';
 import { LoginPage } from './pages/LoginPage';
+import { PublicHomePage } from './pages/PublicHomePage';
+import { PrivacyPage } from './pages/PrivacyPage';
+import { DataRightsPage } from './pages/DataRightsPage';
+import { TermsPage } from './pages/TermsPage';
 import { RoleProtectedRoute } from './components/RoleProtectedRoute';
 import { CoreStudentMenuPage } from './pages/student/CoreStudentMenuPage';
 import { CoreParentPage } from './pages/parent/CoreParentPage';
@@ -9,8 +13,11 @@ import { CoreAdminPage } from './pages/admin/CoreAdminPage';
 import { CoreAdminUsersPage } from './pages/admin/CoreAdminUsersPage';
 
 const router = createBrowserRouter([
-  { path: '/', element: <LoginPage /> },
+  { path: '/', element: <PublicHomePage /> },
   { path: '/login', element: <LoginPage /> },
+  { path: '/privacy', element: <PrivacyPage /> },
+  { path: '/data-rights', element: <DataRightsPage /> },
+  { path: '/terms', element: <TermsPage /> },
   { path: '/menu', element: <RoleProtectedRoute role="student"><CoreStudentMenuPage /></RoleProtectedRoute> },
   { path: '/parent/family', element: <RoleProtectedRoute role="parent"><CoreParentPage /></RoleProtectedRoute> },
   { path: '/staff', element: <RoleProtectedRoute role="staff"><StaffDashboardPage /></RoleProtectedRoute> },
