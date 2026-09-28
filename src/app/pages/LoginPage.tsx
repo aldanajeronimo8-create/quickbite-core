@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Eye, EyeOff, GraduationCap, Loader2, Lock, Mail, Users, Store, ShieldCheck, Chrome } from 'lucide-react';
+import { Eye, EyeOff, GraduationCap, Loader2, Lock, Mail, Users, Store, ShieldCheck } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -35,7 +35,7 @@ export function LoginPage() {
   const [availableRoles, setAvailableRoles] = useState<Mode[]>([]);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [authenticatedUserId, setAuthenticatedUserId] = useState('');
-  const googleError = new URLSearchParams(window.location.search).has('google_error');
+  const googleErrorCode = new URLSearchParams(window.location.search).get('google_error');
 
   const handleGoogle = () => { setGoogleLoading(true); const base = import.meta.env.VITE_API_BASE_URL || window.location.origin; window.location.assign(base.replace(/\/$/,'') + '/v1/auth/google/start'); };
 
@@ -141,11 +141,11 @@ export function LoginPage() {
             <div>
               <Label htmlFor="login-password" className="text-sm">Contraseña</Label>
               <div className="relative mt-1"><Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" /><Input name="current-password" autoComplete="current-password" id="login-password" type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} className="pl-9 pr-10" /><button type="button" onClick={() => setShowPassword((current) => !current)} className="qb-auth-icon-button absolute right-2 top-1/2 -translate-y-1/2" aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}>{showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}</button></div>
-              {error && <p className="qb-auth-error text-xs mt-1">{error}</p>}{googleError && <p className="qb-auth-error text-xs mt-2">No se pudo completar el acceso con Google. Vuelve a intentarlo.</p>}
+              {error && <p className="qb-auth-error text-xs mt-1">{error}</p>}{googleErrorCode && <p className="qb-auth-error text-xs mt-2">{googleErrorCode === 'google_not_configured' ? 'El acceso con Google todavía no está configurado en este entorno.' : 'No se pudo completar el acceso con Google. Vuelve a intentarlo.'}</p>}
             </div>
             <Button type="submit" disabled={loading} className="qb-auth-primary w-full font-semibold py-6 rounded-xl">{loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Verificando...</> : 'Iniciar sesión'}</Button>
             <div className="my-5 flex items-center gap-3 text-xs text-slate-400"><span className="h-px flex-1 bg-slate-200" /><span>o</span><span className="h-px flex-1 bg-slate-200" /></div>
-            <Button type="button" variant="outline" disabled={loading || googleLoading} onClick={handleGoogle} className="w-full rounded-xl py-6 font-semibold">{googleLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Conectando con Google...</> : <><Chrome className="mr-2 h-4 w-4" />Continuar con Google</>}</Button>
+            <Button type="button" variant="outline" disabled={loading || googleLoading} onClick={handleGoogle} className="w-full rounded-xl py-6 font-semibold">{googleLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Conectando con Google...</> : <><span aria-hidden="true" className="mr-2 grid h-5 w-5 place-items-center rounded-full text-sm font-extrabold">G</span>Continuar con Google</>}</Button>
             <div className="mt-4 space-y-1 text-center text-sm text-slate-500"><p>¿Eres estudiante y aún no tienes cuenta? <Link to="/register-student" className="font-bold text-blue-700 underline">Crear cuenta de estudiante</Link></p><p>¿Eres padre de familia y aún no tienes cuenta? <Link to="/register-parent" className="font-bold text-blue-700 underline">Crear cuenta de padre</Link></p></div>
             {getBoundStudentUserId() && <Button type="button" variant="ghost" onClick={() => void changeStudentOnDevice()} disabled={loading} className="qb-auth-secondary-action w-full text-xs">Cambiar estudiante en este dispositivo</Button>}
           </form>
