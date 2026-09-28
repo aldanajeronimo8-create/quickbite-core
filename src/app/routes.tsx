@@ -7,7 +7,6 @@ import { StaffDashboardPage } from './pages/staff/StaffDashboardPage';
 import { StaffOrdersPage } from './pages/staff/StaffOrdersPage';
 import { CoreAdminPage } from './pages/admin/CoreAdminPage';
 import { CoreAdminUsersPage } from './pages/admin/CoreAdminUsersPage';
-import { OrderVerificationPage } from './pages/OrderVerificationPage';
 
 const router = createBrowserRouter([
   { path: '/', element: <LoginPage /> },
@@ -16,7 +15,6 @@ const router = createBrowserRouter([
   { path: '/parent/family', element: <RoleProtectedRoute role="parent"><CoreParentPage /></RoleProtectedRoute> },
   { path: '/staff', element: <RoleProtectedRoute role="staff"><StaffDashboardPage /></RoleProtectedRoute> },
   { path: '/staff/orders', element: <RoleProtectedRoute role="staff"><StaffOrdersPage /></RoleProtectedRoute> },
-  { path: '/staff/verification', element: <RoleProtectedRoute role="staff"><OrderVerificationPage /></RoleProtectedRoute> },
   { path: '/admin', element: <RoleProtectedRoute role="admin"><CoreAdminPage /></RoleProtectedRoute> },
   { path: '/admin/users', element: <RoleProtectedRoute role="admin"><CoreAdminUsersPage /></RoleProtectedRoute> },
   { path: '*', element: <LoginPage /> },
