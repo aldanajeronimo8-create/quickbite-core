@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { requireSupabaseClient } from '../../lib/supabase';
+import { quickbiteApi } from '../../services/api/quickbiteApi';
 import { resolveThemeMode, type ResolvedThemeMode } from '../../lib/themeEngine';
 import { useAuthStore } from '../../store/authStore';
 import type { ThemeMode } from '../../types/theme';
@@ -71,9 +71,8 @@ export function VisualThemeProvider({ children }: { children: ReactNode }) {
     setUserThemeLoading(true);
     const load = async () => {
       try {
-        const { data, error } = await requireSupabaseClient().rpc('get_my_theme_preference');
-        if (error) throw error;
-        const next: ThemeMode = isThemeMode(data) ? data : 'light';
+        const { preferences } = await quickbiteApi().preferences();
+        const next: ThemeMode = isThemeMode(preferences.theme) ? preferences.theme : 'light';
         if (!cancelled) {
           setUserThemeModeState(next);
           writeThemePreference(userId, next);
@@ -105,8 +104,7 @@ export function VisualThemeProvider({ children }: { children: ReactNode }) {
     setUserThemeLoading(true);
     writeThemePreference(userId, next);
     try {
-      const { error } = await requireSupabaseClient().rpc('set_my_theme_preference', { p_theme_mode: next });
-      if (error) throw error;
+      await quickbiteApi().updatePreferences(next);
     } catch (error) {
       setUserThemeModeState(previous);
       writeThemePreference(userId, previous);
