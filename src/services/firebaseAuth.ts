@@ -105,14 +105,23 @@ export async function signInWithFirebaseGoogle() {
   const provider = new modules.GoogleAuthProvider();
   provider.setCustomParameters({ prompt: 'select_account' });
 
-  const result = await modules.signInWithPopup(auth, provider);
+  try {
+    const result = await modules.signInWithPopup(auth, provider);
 
-  return {
-    uid: result.user.uid,
-    email: result.user.email?.trim().toLowerCase() ?? '',
-    fullName: result.user.displayName ?? '',
-    idToken: await result.user.getIdToken(true),
-  };
+    return {
+      uid: result.user.uid,
+      email: result.user.email?.trim().toLowerCase() ?? '',
+      fullName: result.user.displayName ?? '',
+      idToken: await result.user.getIdToken(true),
+    };
+  } catch (error) {
+    const code = typeof error === 'object' && error !== null && 'code' in error
+      ? String((error as { code?: unknown }).code ?? '')
+      : '';
+    if (code === 'auth/configuration-not-found') throw new Error('firebase_google_provider_not_configured');
+    if (code === 'auth/unauthorized-domain') throw new Error('firebase_unauthorized_domain');
+    throw error;
+  }
 }
 
 export async function signOutFirebase() {
