@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { GraduationCap, Loader2, LogOut, ShieldCheck, Store, Users } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useAuthStore } from '../../store/authStore';
 
@@ -18,12 +18,13 @@ export function RoleSelectionPage() {
   const user = useAuthStore((state) => state.user);
   const signOut = useAuthStore((state) => state.signOut);
   const switchRole = useAuthStore((state) => state.switchRole);
+  const authLoading = useAuthStore((state) => state.loading);
   const [loading, setLoading] = useState<Role | null>(null);
 
-  if (!user) {
-    navigate('/login', { replace: true });
-    return null;
+  if (authLoading) {
+    return <main className="grid min-h-screen place-items-center"><div className="text-sm font-semibold">Verificando sesión...</div></main>;
   }
+  if (!user) return <Navigate to="/login" replace />;
 
   const roles = Array.from(new Set(user.protected
     ? ROLE_OPTIONS.map((option) => option.role)
