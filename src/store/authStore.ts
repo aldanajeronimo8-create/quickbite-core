@@ -19,6 +19,10 @@ function profileFromSession(session: ApiSession): Profile {
     role: session.user.role,
     roles: session.user.roles,
     protected: session.user.protected,
+    grade: session.user.course ?? null,
+    section_id: session.user.sectionId ?? null,
+    grade_id: session.user.gradeId ?? null,
+    course_id: session.user.courseId ?? null,
     created_at: new Date().toISOString(),
   };
 }
