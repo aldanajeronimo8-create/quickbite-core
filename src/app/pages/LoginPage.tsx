@@ -11,12 +11,6 @@ import { toast } from 'sonner';
 import { isFirebaseGoogleConfigured } from '../../services/firebaseAuth';
 
 type Mode = 'student' | 'parent' | 'staff' | 'admin';
-const internalLabels: Record<Mode, { label: string; area: string; icon: typeof GraduationCap }> = {
-  student: { label: 'Estudiante', area: 'Menú y pedidos', icon: GraduationCap },
-  parent: { label: 'Padre de familia', area: 'Portal familiar', icon: Users },
-  staff: { label: 'Personal de cafetería', area: 'Operación de cafetería', icon: Store },
-  admin: { label: 'Administración', area: 'Panel administrativo', icon: ShieldCheck },
-};
 
 function goToRole(navigate: ReturnType<typeof useNavigate>, role: Mode, userId: string) {
   if (role === 'admin') navigate('/admin');
