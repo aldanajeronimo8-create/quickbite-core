@@ -50,7 +50,8 @@ try {
 
   const coreScheduleIds = new Map();
   for (const schedule of schedules) {
-    const result = await core.query(
+    const existing = await core.query('SELECT id FROM quickbite.recess_schedules WHERE name=$1 AND weekday=$2 AND start_time=$3 AND end_time=$4 LIMIT 1',[schedule.name,schedule.weekday,schedule.start_time,schedule.end_time]);
+    const result = existing.rows[0] ? existing : await core.query(
       'INSERT INTO quickbite.recess_schedules(name,weekday,start_time,end_time,active,priority,notes) VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING id',
       [schedule.name,schedule.weekday,schedule.start_time,schedule.end_time,schedule.active,schedule.priority ?? 0,schedule.notes ?? null]
     );
@@ -64,7 +65,8 @@ try {
     const gradeId = target.grade_id ? gradeMap.get(String(target.grade_id)) : null;
     const courseId = target.course_id ? courseMap.get(String(target.course_id)) : null;
     if (!sectionId && !gradeId && !courseId) continue;
-    await core.query(
+    const exists = await core.query('SELECT id FROM quickbite.recess_schedule_targets WHERE recess_schedule_id=$1 AND section_id IS NOT DISTINCT FROM $2 AND grade_id IS NOT DISTINCT FROM $3 AND course_id IS NOT DISTINCT FROM $4 LIMIT 1',[scheduleId,sectionId,gradeId,courseId]);
+    if (!exists.rows[0]) await core.query(
       'INSERT INTO quickbite.recess_schedule_targets(recess_schedule_id,section_id,grade_id,course_id) VALUES($1,$2,$3,$4)',
       [scheduleId,sectionId,gradeId,courseId]
     );
