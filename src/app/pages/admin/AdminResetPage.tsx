@@ -13,7 +13,7 @@ export function AdminResetPage() {
   const [resetting, setResetting] = useState(false);
 
   const activeOrders = useMemo(() => orders.filter((order) => !order.admin_hidden), [orders]);
-  const isSystemAdmin = user?.role === 'admin' || user?.role === 'both';
+  const isSystemAdmin = user?.role === 'admin';
   const canReset = isSystemAdmin && confirmation.trim().toUpperCase() === 'REINICIAR';
 
   const handleReset = async () => {
