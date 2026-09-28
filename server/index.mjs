@@ -1,7 +1,7 @@
 import { createHash, randomBytes, timingSafeEqual, createHmac, randomUUID, scryptSync } from 'node:crypto';
 import http from 'node:http';
 import { Pool } from 'pg';
-import { assertRole, canCreateOrders, canReadOrders } from './authorization.mjs';
+import { canCreateOrders, canReadOrders } from './authorization.mjs';
 
 const required = ['DATABASE_URL', 'AUTH_JWT_SECRET'];
 for (const name of required) if (!process.env[name]) throw new Error(`${name} is required`);
