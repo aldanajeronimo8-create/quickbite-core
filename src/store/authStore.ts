@@ -95,6 +95,10 @@ export const useAuthStore = create<AuthState>((set) => ({
         role: user.role,
         roles: user.roles,
         protected: user.protected,
+        grade: user.course ?? null,
+        section_id: user.sectionId ?? null,
+        grade_id: user.gradeId ?? null,
+        course_id: user.courseId ?? null,
         created_at: new Date().toISOString(),
       } satisfies Profile;
       set({ user: profile, session: { token: client.getSession()!.accessToken }, loading: false });
