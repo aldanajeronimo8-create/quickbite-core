@@ -20,11 +20,6 @@ export function StaffDashboardPage() {
             <h2 className="mt-4 text-lg font-black">Pedidos</h2>
             <p className="mt-1 text-sm text-slate-600">Consulta los pedidos que requieren atención operativa.</p>
           </Link>
-          <Link to="/staff/verification" className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
-            <ScanLine className="h-7 w-7 text-blue-700" />
-            <h2 className="mt-4 text-lg font-black">Verificación</h2>
-            <p className="mt-1 text-sm text-slate-600">Accede al punto de verificación de pedidos para el personal.</p>
-          </Link>
         </section>
       </div>
     </main>
