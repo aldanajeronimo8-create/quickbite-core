@@ -17,6 +17,7 @@ import type { LucideIcon } from 'lucide-react';
 import { canAccessStudent } from '../../../lib/access';
 import { QuickBiteLogo } from '../../components/brand/QuickBiteLogo';
 import { useStudentContextStore } from '../../../store/studentContextStore';
+import { useAuthStore } from '../../../store/authStore';
 
 type Tab = 'menu' | 'orders' | 'rewards';
 type PayStep = 'cart' | 'payment' | 'receipt';
@@ -84,6 +85,7 @@ export function StudentMenuPage() {
   const processedCartAction = useRef<string | null>(null);
 
   const activeStudent = useStudentContextStore((state) => state.activeStudent);
+  const signOut = useAuthStore((state) => state.signOut);
   const clearActiveStudent = useStudentContextStore((state) => state.clearActiveStudent);
 
   useEffect(() => {
@@ -339,8 +341,8 @@ export function StudentMenuPage() {
       }
       return;
     }
-    await requireSupabaseClient().auth.signOut();
-    navigate('/');
+    await signOut();
+    navigate('/login', { replace: true });
   };
 
   const handleRewardRedemption = async (reward: LoyaltyReward) => {
