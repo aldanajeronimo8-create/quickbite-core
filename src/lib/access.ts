@@ -5,9 +5,13 @@ export function canAccessAdmin(role: UserRole) {
 }
 
 export function canAccessStudent(role: UserRole) {
-  return role === 'student' || role === 'admin' || role === 'staff';
+  return role === 'student' || role === 'admin';
 }
 
 export function canAccessParent(role: UserRole) {
   return role === 'parent';
+}
+
+export function canAccessStaff(role: UserRole) {
+  return role === 'staff' || role === 'admin';
 }
