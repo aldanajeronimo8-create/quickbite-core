@@ -42,6 +42,56 @@ export class QuickBiteApi {
   async login(email: string, password: string, role?: ApiRole) { const session = await this.request<ApiSession>('/v1/auth/login', { method: 'POST', body: JSON.stringify({ email, password, role }) }, false); this.setSession(session); return session; }
   async registerParent(input: { fullName: string; email: string; password: string; documentNumber: string; privacyConsent: boolean }) { const session = await this.request<ApiSession>('/v1/auth/register', { method: 'POST', body: JSON.stringify({ ...input, role: 'parent' }) }, false); this.setSession(session); return session; }
   async registerStudent(input: { fullName: string; email: string; password: string; documentNumber: string; sectionId: string; gradeId: string; courseId: string; guardianName: string; guardianRelationship: string; guardianEmail: string; studentAcknowledged: boolean; guardianAuthorized: boolean }) { const session = await this.request<ApiSession>('/v1/auth/register', { method: 'POST', body: JSON.stringify({ ...input, role: 'student', privacyConsent: input.studentAcknowledged && input.guardianAuthorized }) }, false); this.setSession(session); return session; }
+  async exchangeFirebaseToken(idToken: string) {
+    const response = await this.fetcher(this.baseUrl + '/v1/auth/firebase/exchange', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ idToken }),
+    });
+    const body = await response.json().catch(() => ({}));
+    if (response.status === 202) return body as { status: 'onboarding_required'; email: string; fullName: string };
+    if (!response.ok) throw new Error(typeof body.error === 'string' ? body.error : 'firebase_auth_failed');
+    const session = body as ApiSession;
+    this.setSession(session);
+    return { status: 'authenticated' as const, session };
+  }
+
+  async firebaseOnboarding() {
+    const response = await this.fetcher(this.baseUrl + '/v1/auth/firebase/onboarding', {
+      method: 'GET',
+      credentials: 'include',
+    });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(typeof body.error === 'string' ? body.error : 'firebase_onboarding_missing');
+    return body as { email: string; fullName: string };
+  }
+
+  async completeFirebaseOnboarding(input: {
+    role: 'student' | 'parent';
+    documentNumber: string;
+    sectionId?: string;
+    gradeId?: string;
+    courseId?: string;
+    guardianName?: string;
+    guardianRelationship?: string;
+    guardianEmail?: string;
+    studentAcknowledged?: boolean;
+    guardianAuthorized?: boolean;
+    privacyConsent: boolean;
+  }) {
+    const response = await this.fetcher(this.baseUrl + '/v1/auth/firebase/complete', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(input),
+    });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(typeof body.error === 'string' ? body.error : 'firebase_profile_failed');
+    const session = body as ApiSession;
+    this.setSession(session);
+    return session;
+  }
+
   async consumeGoogleSession() { const response = await this.fetcher(this.baseUrl + '/v1/auth/google/session', { method: 'GET', credentials: 'include' }); if (!response.ok) { const body = await response.json().catch(() => ({})); throw new Error(typeof body.error === 'string' ? body.error : 'google_session_missing'); } const session = await response.json() as ApiSession; this.setSession(session); return session; }
   async academicStructure() { const response = await this.fetcher(this.baseUrl + '/v1/academic/structure', { method: 'GET' }); if (!response.ok) throw new Error('academic_structure_unavailable'); return response.json() as Promise<{ sections: Array<{ id: string; name: string; grades: Array<{ id: string; name: string; courses: Array<{ id: string; name: string }> }> }> }>; }
   async googleOnboarding() { const response = await this.fetcher(this.baseUrl + '/v1/auth/google/onboarding', { method: 'GET', credentials: 'include' }); if (!response.ok) { const body = await response.json().catch(() => ({})); throw new Error(typeof body.error === 'string' ? body.error : 'google_onboarding_missing'); } return response.json() as Promise<{ email: string; fullName: string }>; }
