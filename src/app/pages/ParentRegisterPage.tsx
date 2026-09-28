@@ -7,11 +7,13 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { QuickBiteLogo } from '../components/brand/QuickBiteLogo';
 import { quickbiteApi } from '../../services/api/quickbiteApi';
+import { useAuthStore } from '../../store/authStore';
 
 const PRIVACY_VERSION='2026-09-27';
 
 export function ParentRegisterPage() {
   const navigate=useNavigate();
+  const signIn=useAuthStore((state)=>state.signIn);
   const [form,setForm]=useState({fullName:'',email:'',documentNumber:'',password:'',confirmPassword:''});
   const [showPassword,setShowPassword]=useState(false);
   const [showConfirm,setShowConfirm]=useState(false);
@@ -34,6 +36,7 @@ export function ParentRegisterPage() {
     setSaving(true);setError('');
     try{
       await quickbiteApi().registerParent({fullName:form.fullName.trim(),email,password:form.password,documentNumber,privacyConsent});
+      await signIn(email,form.password,'parent');
       toast.success('Cuenta de padre de familia creada.');
       navigate('/parent/family',{replace:true});
     }catch(cause){
