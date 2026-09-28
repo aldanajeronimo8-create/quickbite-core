@@ -8,7 +8,7 @@ const base = process.env.SUPABASE_URL.replace(/\/$/,'');
 const headers = { apikey: process.env.SUPABASE_SERVICE_ROLE_KEY, Authorization: 'Bearer ' + process.env.SUPABASE_SERVICE_ROLE_KEY };
 
 async function readTable(name) {
-  const response = await fetch(base + '/rest/v1/' + name + '?select=*', { headers });
+  const response = await globalThis.fetch(base + '/rest/v1/' + name + '?select=*', { headers });
   if (!response.ok) throw new Error(name + ': Supabase returned ' + response.status + ' ' + await response.text());
   return response.json();
 }
