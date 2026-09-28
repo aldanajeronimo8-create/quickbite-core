@@ -92,7 +92,6 @@ export function LoginPage() {
   };
 
   if (availableRoles.length > 1) {
-    const googleError = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('google_error') : null;
   return (
       <div className="qb-auth qb-auth--private min-h-screen flex flex-col items-center justify-center p-5">
         <div className="w-full max-w-md">
