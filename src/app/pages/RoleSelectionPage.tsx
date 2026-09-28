@@ -36,7 +36,7 @@ export function RoleSelectionPage() {
     setLoading(role);
     try {
       await switchRole(role);
-      navigate(path);
+      navigate(path, { replace: true });
       toast.success(`Entorno de ${ROLE_OPTIONS.find((option) => option.role === role)?.label.toLowerCase() ?? role} activado.`);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'No se pudo cambiar de entorno.';
