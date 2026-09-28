@@ -8,6 +8,7 @@ import { Label } from '../components/ui/label';
 import { QuickBiteLogo } from '../components/brand/QuickBiteLogo';
 import { bindStudentUser, clearBoundStudentUser, getBoundStudentUserId } from '../../lib/studentDeviceSession';
 import { toast } from 'sonner';
+import { isFirebaseGoogleConfigured } from '../../services/firebaseAuth';
 
 type Mode = 'student' | 'parent' | 'staff' | 'admin';
 const internalLabels: Record<Mode, { label: string; area: string; icon: typeof GraduationCap }> = {
@@ -26,7 +27,7 @@ function goToRole(navigate: ReturnType<typeof useNavigate>, role: Mode, userId: 
 
 export function LoginPage() {
   const navigate = useNavigate();
-  const { signIn, signOut, switchRole } = useAuthStore();
+  const { signIn, signOut, switchRole, signInWithFirebaseGoogle } = useAuthStore();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -36,6 +37,7 @@ export function LoginPage() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [authenticatedUserId, setAuthenticatedUserId] = useState('');
   const googleErrorCode = new URLSearchParams(window.location.search).get('google_error');
+  const googleConfigured = isFirebaseGoogleConfigured();
   const googleErrorMessage = googleErrorCode === 'google_not_configured'
     ? 'El acceso con Google todavía no está configurado en este entorno.'
     : googleErrorCode === 'google_internal_account_not_allowed'
@@ -44,7 +46,41 @@ export function LoginPage() {
         ? 'No se pudo completar el acceso con Google. Vuelve a intentarlo.'
         : '';
 
-  const handleGoogle = () => { setGoogleLoading(true); const base = import.meta.env.VITE_API_BASE_URL || window.location.origin; window.location.assign(base.replace(/\/$/,'') + '/v1/auth/google/start'); };
+  const handleGoogle = async () => {
+    if (!googleConfigured) {
+      const message = 'El acceso con Google todavía no está configurado en este entorno.';
+      setError(message);
+      toast.error(message);
+      return;
+    }
+    setGoogleLoading(true);
+    setError('');
+    try {
+      const result = await signInWithFirebaseGoogle();
+      if (result.status === 'onboarding_required') {
+        navigate('/firebase/onboarding');
+        return;
+      }
+      goToRole(navigate, result.user.role as Mode, result.user.id);
+      toast.success('Acceso con Google verificado.');
+    } catch (cause) {
+      const raw = cause instanceof Error ? cause.message : 'No se pudo iniciar sesión con Google.';
+      const message =
+        raw === 'google_internal_account_not_allowed'
+          ? 'Las cuentas de personal de cafetería y administración deben iniciar sesión con correo y contraseña.'
+          : raw === 'firebase_not_configured'
+            ? 'El acceso con Google todavía no está configurado en este entorno.'
+            : raw === 'auth/popup-closed-by-user'
+              ? 'Cerraste la ventana de Google antes de completar el acceso.'
+              : raw === 'auth/popup-blocked'
+                ? 'El navegador bloqueó la ventana de Google. Permite ventanas emergentes para QuickBite e inténtalo de nuevo.'
+                : raw;
+      setError(message);
+      toast.error(message);
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
 
   const handleLogin = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -152,7 +188,7 @@ export function LoginPage() {
             </div>
             <Button type="submit" disabled={loading} className="qb-auth-primary w-full font-semibold py-6 rounded-xl">{loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Verificando...</> : 'Iniciar sesión'}</Button>
             <div className="my-5 flex items-center gap-3 text-xs text-slate-400"><span className="h-px flex-1 bg-slate-200" /><span>o</span><span className="h-px flex-1 bg-slate-200" /></div>
-            <Button type="button" variant="outline" disabled={loading || googleLoading} onClick={handleGoogle} className="w-full rounded-xl py-6 font-semibold">{googleLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Conectando con Google...</> : <><span aria-hidden="true" className="mr-2 grid h-5 w-5 place-items-center rounded-full text-sm font-extrabold">G</span>Continuar con Google</>}</Button>
+            <Button type="button" variant="outline" disabled={loading || googleLoading || !googleConfigured} onClick={() => void handleGoogle()} className="w-full rounded-xl py-6 font-semibold" title={!googleConfigured ? 'Configura Firebase Authentication para habilitar Google' : undefined}>{googleLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Conectando con Google...</> : <><span aria-hidden="true" className="mr-2 grid h-5 w-5 place-items-center rounded-full text-sm font-extrabold">G</span>{googleConfigured ? 'Continuar con Google' : 'Google no configurado'}</>}</Button>
             <div className="mt-4 space-y-1 text-center text-sm text-slate-500"><p>¿Eres estudiante y aún no tienes cuenta? <Link to="/register-student" className="font-bold text-blue-700 underline">Crear cuenta de estudiante</Link></p><p>¿Eres padre de familia y aún no tienes cuenta? <Link to="/register-parent" className="font-bold text-blue-700 underline">Crear cuenta de padre</Link></p></div>
             {getBoundStudentUserId() && <Button type="button" variant="ghost" onClick={() => void changeStudentOnDevice()} disabled={loading} className="qb-auth-secondary-action w-full text-xs">Cambiar estudiante en este dispositivo</Button>}
           </form>
