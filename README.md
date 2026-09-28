@@ -1,6 +1,6 @@
 # QuickBite
 
-Aplicación web completa de QuickBite para el Colegio Bilingüe Maximino Poitiers.
+Aplicación web completa de QuickBite para el QuickBite.
 
 ## Arquitectura activa
 
