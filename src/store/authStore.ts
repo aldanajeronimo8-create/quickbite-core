@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Profile } from '../lib/supabase';
+import type { Profile } from '../types/domain';
 import { writeAuditLog } from '../lib/auditLog';
 import { quickbiteApi, type ApiSession } from '../services/api/quickbiteApi';
 
