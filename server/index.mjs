@@ -2,10 +2,12 @@ import { createHash, randomBytes, timingSafeEqual, createHmac, randomUUID, scryp
 import http from 'node:http';
 import { Pool } from 'pg';
 import { canAdminister, canCreateOrders, canOperateOrders, canReadOrders } from './authorization.mjs';
+import { ensureCoreAcademicSchema } from './ensure-core-academic-schema.mjs';
 
 const required = ['DATABASE_URL', 'AUTH_JWT_SECRET'];
 for (const name of required) if (!process.env[name]) throw new Error(`${name} is required`);
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const coreAcademicSchemaReady = ensureCoreAcademicSchema(pool);
 const port = Number(process.env.PORT ?? 3000);
 const origins = new Set((process.env.ALLOWED_ORIGINS ?? 'http://localhost:5173').split(',').map((value) => value.trim()));
 const accessTtlSeconds = 30 * 60;
@@ -110,4 +112,4 @@ async function route(request,response,requestId){
  if(method==='GET'&&url.pathname==='/v1/admin/overview'){const auth=authenticate(request);if(!canAdminister(auth.role))return json(response,403,{error:'forbidden'},requestId);const [users,orders,sales,stock]=await Promise.all([pool.query('SELECT role,COUNT(*)::int AS count FROM quickbite.users GROUP BY role ORDER BY role'),pool.query('SELECT status,COUNT(*)::int AS count FROM quickbite.orders GROUP BY status ORDER BY status'),pool.query("SELECT COALESCE(SUM(total),0)::numeric(12,2) AS total FROM quickbite.orders WHERE payment_status='approved'"),pool.query('SELECT COUNT(*)::int AS low_stock FROM quickbite.inventory WHERE quantity <= 5')]);return json(response,200,{usersByRole:users.rows,ordersByStatus:orders.rows,approvedSales:sales.rows[0]?.total??0,lowStockProducts:stock.rows[0]?.low_stock??0},requestId);}
  return json(response,404,{error:'not_found'},requestId);
 }
-export async function handler(request,response){const requestId=randomUUID();const origin=request.headers.origin;if(origin&&origins.has(origin))response.setHeader('access-control-allow-origin',origin);response.setHeader('vary','Origin');response.setHeader('access-control-allow-headers','authorization,content-type');response.setHeader('access-control-allow-methods','GET,POST,PUT,PATCH,DELETE,OPTIONS');if(request.method==='OPTIONS')return response.writeHead(204).end();try{await route(request,response,requestId);}catch(error){const known=['missing_token','invalid_token','expired_token'];const status=known.includes(error.message)?401:error.statusCode===403?403:error.message==='invalid_json'?400:500;console.error(JSON.stringify({requestId,message:error.message}));json(response,status,{error:status===500?'internal_error':error.message},requestId);}} if(!process.env.VERCEL){http.createServer(handler).listen(port,()=>console.log(`QuickBite API listening on ${port}`));}
+export async function handler(request,response){const requestId=randomUUID();const origin=request.headers.origin;if(origin&&origins.has(origin))response.setHeader('access-control-allow-origin',origin);response.setHeader('vary','Origin');response.setHeader('access-control-allow-headers','authorization,content-type');response.setHeader('access-control-allow-methods','GET,POST,PUT,PATCH,DELETE,OPTIONS');if(request.method==='OPTIONS')return response.writeHead(204).end();try{await coreAcademicSchemaReady;await route(request,response,requestId);}catch(error){const known=['missing_token','invalid_token','expired_token'];const status=known.includes(error.message)?401:error.statusCode===403?403:error.message==='invalid_json'?400:500;console.error(JSON.stringify({requestId,message:error.message}));json(response,status,{error:status===500?'internal_error':error.message},requestId);}} if(!process.env.VERCEL){http.createServer(handler).listen(port,()=>console.log(`QuickBite API listening on ${port}`));}
