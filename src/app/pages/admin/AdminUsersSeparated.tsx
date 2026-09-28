@@ -19,20 +19,19 @@ type GeneratedCode = { code: string; expires_at: string; student_name: string };
 const CREATE_ROLES: Array<{ value: Profile['role']; label: string; description: string; icon: typeof Users }> = [
   { value: 'student', label: 'Usuario', description: 'Cuenta de estudiante para realizar compras y consultar pedidos.', icon: GraduationCap },
   { value: 'admin', label: 'Administrador', description: 'Cuenta con acceso al panel administrativo.', icon: Shield },
-  { value: 'both', label: 'Usuario y administrador', description: 'Cuenta de estudiante con acceso administrativo.', icon: Shield },
+  { value: 'staff', label: 'Personal de cafetería', description: 'Cuenta para operar pedidos y procesos diarios de cafetería.', icon: ShieldCheck },
 ];
 const RELATIONSHIPS = ['Padre', 'Madre', 'Acudiente', 'Tutor legal', 'Abuelo/a', 'Tío/a', 'Hermano/a', 'Familiar', 'Otro'];
 const emptyForm: UserForm = { email: '', password: '', full_name: '', role: 'student', ti: '', student_code: '', relationship: 'Padre' };
 const roleLabel = (role: Profile['role']) => {
   if (role === 'admin') return 'Administrador';
-  if (role === 'both') return 'Usuario y administrador';
+  if (role === 'staff') return 'Personal de cafetería';
   if (role === 'parent') return 'Padre de familia';
-  if (role === 'student_parent') return 'Usuario y padre';
   return 'Usuario';
 };
-const isAdmin = (role: Profile['role']) => role === 'admin' || role === 'both';
-const needsTi = (role: Profile['role']) => role === 'student' || role === 'both' || role === 'student_parent';
-const canGenerateCode = (role: Profile['role']) => role === 'student' || role === 'both' || role === 'student_parent';
+const isAdmin = (role: Profile['role']) => role === 'admin';
+const needsTi = (role: Profile['role']) => role === 'student';
+const canGenerateCode = (role: Profile['role']) => role === 'student';
 
 export function AdminUsersSeparated() {
   const { users, addUser, updateUser, updateProtectedCredentials, deleteUser } = useDataStore();
@@ -187,7 +186,7 @@ export function AdminUsersSeparated() {
     try { await deleteUser(user.id); toast.success('Usuario eliminado'); await loadConsents(); } catch (error) { toast.error(error instanceof Error ? error.message : 'No se pudo eliminar'); }
   };
 
-  const studentRoleEditing = form.role === 'student' || form.role === 'both' || form.role === 'student_parent';
+  const studentRoleEditing = form.role === 'student';
   const displayRole = CREATE_ROLES.find((option) => option.value === form.role) ?? CREATE_ROLES[0];
   const RoleIcon = displayRole.icon;
 
