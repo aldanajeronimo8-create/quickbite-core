@@ -1,7 +1,12 @@
 import { createHash, randomBytes, timingSafeEqual, createHmac, randomUUID, scryptSync } from 'node:crypto';
 import http from 'node:http';
 import { Pool } from 'pg';
-import { canCreateOrders, canReadOrders } from './authorization.mjs';
+import {
+  canAdminister,
+  canCreateOrders,
+  canOperateOrders,
+  canReadOrders,
+} from './authorization.mjs';
 
 const required = ['DATABASE_URL', 'AUTH_JWT_SECRET'];
 for (const name of required) if (!process.env[name]) throw new Error(`${name} is required`);
@@ -11,26 +16,321 @@ const origins = new Set((process.env.ALLOWED_ORIGINS ?? 'http://localhost:5173')
 const accessTtlSeconds = 30 * 60;
 const refreshTtlDays = 31;
 
-const json = (response, status, body, requestId) => response.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'x-request-id': requestId }).end(JSON.stringify(body));
-const verifyPassword = (password, stored) => { const [salt, digest] = stored.split(':'); const actual = scryptSync(password, salt, 64); return timingSafeEqual(actual, Buffer.from(digest, 'hex')); };
+const json = (response, status, body, requestId) => response.writeHead(status, {
+  'content-type': 'application/json; charset=utf-8',
+  'x-request-id': requestId,
+}).end(JSON.stringify(body));
+const verifyPassword = (password, stored) => {
+  const [salt, digest] = stored.split(':');
+  const actual = scryptSync(password, salt, 64);
+  return timingSafeEqual(actual, Buffer.from(digest, 'hex'));
+};
 const hashToken = (value) => createHash('sha256').update(value).digest('hex');
-const sign = (payload) => { const encoded = Buffer.from(JSON.stringify(payload)).toString('base64url'); const signature = createHmac('sha256', process.env.AUTH_JWT_SECRET).update(encoded).digest('base64url'); return `${encoded}.${signature}`; };
-const verify = (token) => { const [encoded, signature] = token.split('.'); if (!encoded || !signature) throw new Error('invalid_token'); const expected = Buffer.from(createHmac('sha256', process.env.AUTH_JWT_SECRET).update(encoded).digest('base64url')); const actual = Buffer.from(signature); if (actual.length !== expected.length || !timingSafeEqual(actual, expected)) throw new Error('invalid_token'); const payload = JSON.parse(Buffer.from(encoded, 'base64url').toString()); if (payload.exp <= Math.floor(Date.now() / 1000)) throw new Error('expired_token'); return payload; };
+const sign = (payload) => {
+  const encoded = Buffer.from(JSON.stringify(payload)).toString('base64url');
+  const signature = createHmac('sha256', process.env.AUTH_JWT_SECRET).update(encoded).digest('base64url');
+  return `${encoded}.${signature}`;
+};
+const verify = (token) => {
+  const [encoded, signature] = token.split('.');
+  if (!encoded || !signature) throw new Error('invalid_token');
+  const expected = Buffer.from(createHmac('sha256', process.env.AUTH_JWT_SECRET).update(encoded).digest('base64url'));
+  const actual = Buffer.from(signature);
+  if (actual.length !== expected.length || !timingSafeEqual(actual, expected)) throw new Error('invalid_token');
+  const payload = JSON.parse(Buffer.from(encoded, 'base64url').toString());
+  if (payload.exp <= Math.floor(Date.now() / 1000)) throw new Error('expired_token');
+  return payload;
+};
 const issueAccess = (user) => sign({ sub: user.id, role: user.role, exp: Math.floor(Date.now() / 1000) + accessTtlSeconds });
-const readJson = async (request) => { let body = ''; for await (const chunk of request) body += chunk; try { return body ? JSON.parse(body) : {}; } catch { throw new Error('invalid_json'); } };
-const authenticate = (request) => { const value = request.headers.authorization; if (!value?.startsWith('Bearer ')) throw new Error('missing_token'); return verify(value.slice(7)); };
+const readJson = async (request) => {
+  let body = '';
+  for await (const chunk of request) body += chunk;
+  try { return body ? JSON.parse(body) : {}; } catch { throw new Error('invalid_json'); }
+};
+const authenticate = (request) => {
+  const value = request.headers.authorization;
+  if (!value?.startsWith('Bearer ')) throw new Error('missing_token');
+  return verify(value.slice(7));
+};
 const publicUser = (row) => ({ id: row.id, email: row.email, role: row.role, fullName: row.full_name });
-async function issueSession(client, user) { const refreshToken = randomBytes(48).toString('base64url'); await client.query("INSERT INTO quickbite.auth_sessions(user_id,refresh_token_hash,expires_at) VALUES($1,$2,now() + ($3 * interval '1 day'))", [user.id, hashToken(refreshToken), refreshTtlDays]); return { accessToken: issueAccess(user), refreshToken, expiresIn: accessTtlSeconds, user: publicUser(user) }; }
-async function route(request, response, requestId) {
- const url = new URL(request.url, `http://${request.headers.host}`); const method = request.method;
- if (method === 'GET' && url.pathname === '/health') { await pool.query('SELECT 1'); return json(response, 200, { status: 'ok' }, requestId); }
- if (method === 'POST' && url.pathname === '/v1/auth/login') { const { email, password } = await readJson(request); if (typeof email !== 'string' || typeof password !== 'string') return json(response,400,{error:'invalid_credentials'},requestId); const result=await pool.query('SELECT u.id,u.email,u.role,u.password_hash,p.full_name FROM quickbite.users u JOIN quickbite.profiles p ON p.user_id=u.id WHERE u.email=$1 AND u.active', [email.trim().toLowerCase()]); const user=result.rows[0]; if (!user || !verifyPassword(password,user.password_hash)) return json(response,401,{error:'invalid_credentials'},requestId); return json(response,200,await issueSession(pool,user),requestId); }
- if (method === 'POST' && url.pathname === '/v1/auth/refresh') { const { refreshToken }=await readJson(request); if(typeof refreshToken!=='string') return json(response,401,{error:'invalid_refresh_token'},requestId); const client=await pool.connect(); try { await client.query('BEGIN'); const result=await client.query("SELECT s.id AS session_id,u.id,u.email,u.role,p.full_name FROM quickbite.auth_sessions s JOIN quickbite.users u ON u.id=s.user_id JOIN quickbite.profiles p ON p.user_id=u.id WHERE s.refresh_token_hash=$1 AND s.revoked_at IS NULL AND s.expires_at>now() FOR UPDATE",[hashToken(refreshToken)]); const user=result.rows[0]; if(!user) { await client.query('ROLLBACK'); return json(response,401,{error:'invalid_refresh_token'},requestId); } await client.query('UPDATE quickbite.auth_sessions SET revoked_at=now() WHERE id=$1',[user.session_id]); const session=await issueSession(client,user); await client.query('COMMIT'); return json(response,200,session,requestId); } finally { client.release(); } }
- if (method === 'POST' && url.pathname === '/v1/auth/logout') { const { refreshToken }=await readJson(request); if(typeof refreshToken==='string') await pool.query('UPDATE quickbite.auth_sessions SET revoked_at=now() WHERE refresh_token_hash=$1',[hashToken(refreshToken)]); return response.writeHead(204, { 'x-request-id': requestId }).end(); }
- if (method === 'GET' && url.pathname === '/v1/menu') { const { rows }=await pool.query('SELECT id,name,description,price,category_id,category_name,stock FROM quickbite.v_menu ORDER BY category_name,name'); return json(response,200,{items:rows},requestId); }
- if (method === 'GET' && url.pathname === '/v1/me') { const auth=authenticate(request); const {rows}=await pool.query('SELECT u.id,u.email,u.role,p.full_name FROM quickbite.users u JOIN quickbite.profiles p ON p.user_id=u.id WHERE u.id=$1 AND u.active',[auth.sub]); if(!rows[0]) return json(response,401,{error:'invalid_token'},requestId); return json(response,200,{user:publicUser(rows[0])},requestId); }
- if (method === 'GET' && url.pathname === '/v1/orders') { const auth=authenticate(request); if (!canReadOrders(auth.role)) return json(response,403,{error:'forbidden'},requestId); const staffOrAdmin=auth.role==='admin'||auth.role==='staff'; const result=await pool.query(staffOrAdmin ? 'SELECT * FROM quickbite.orders ORDER BY created_at DESC' : 'SELECT * FROM quickbite.orders WHERE user_id=$1 ORDER BY created_at DESC',[auth.sub]); return json(response,200,{items:result.rows},requestId); }
- if (method === 'POST' && url.pathname === '/v1/orders') { const auth=authenticate(request); if (!canCreateOrders(auth.role)) return json(response,403,{error:'forbidden'},requestId); const {items,paymentMethod,idempotencyKey}=await readJson(request); if(!Array.isArray(items)||typeof paymentMethod!=='string'||typeof idempotencyKey!=='string') return json(response,400,{error:'invalid_order_payload'},requestId); const normalizedPaymentMethod = paymentMethod === 'credits' ? 'wallet' : paymentMethod === 'bre-b' ? 'bre_b' : paymentMethod; const {rows}=await pool.query('SELECT * FROM quickbite.create_order_tx($1,$2,$3,$4)',[auth.sub,JSON.stringify(items),normalizedPaymentMethod,idempotencyKey]); return json(response,201,{order:rows[0]},requestId); }
- return json(response,404,{error:'not_found'},requestId);
+const requireUser = async (auth) => {
+  const { rows } = await pool.query(
+    'SELECT u.id,u.email,u.role,p.full_name FROM quickbite.users u JOIN quickbite.profiles p ON p.user_id=u.id WHERE u.id=$1 AND u.active',
+    [auth.sub],
+  );
+  if (!rows[0]) throw new Error('invalid_token');
+  return rows[0];
+};
+const isUuid = (value) => typeof value === 'string' && /^[0-9a-f-]{36}$/i.test(value);
+
+async function issueSession(client, user) {
+  const refreshToken = randomBytes(48).toString('base64url');
+  await client.query(
+    "INSERT INTO quickbite.auth_sessions(user_id,refresh_token_hash,expires_at) VALUES($1,$2,now() + ($3 * interval '1 day'))",
+    [user.id, hashToken(refreshToken), refreshTtlDays],
+  );
+  return { accessToken: issueAccess(user), refreshToken, expiresIn: accessTtlSeconds, user: publicUser(user) };
 }
-http.createServer(async (request,response) => { const requestId=randomUUID(); const origin=request.headers.origin; if(origin && origins.has(origin)) response.setHeader('access-control-allow-origin',origin); response.setHeader('vary','Origin'); response.setHeader('access-control-allow-headers','authorization,content-type'); response.setHeader('access-control-allow-methods','GET,POST,OPTIONS'); if(request.method==='OPTIONS') return response.writeHead(204).end(); try { await route(request,response,requestId); } catch(error) { const known=['missing_token','invalid_token','expired_token']; const status=known.includes(error.message)?401:error.statusCode===403?403:error.message==='invalid_json'?400:500; console.error(JSON.stringify({requestId,message:error.message})); json(response,status,{error:status===500?'internal_error':error.message},requestId); } }).listen(port,()=>console.log(`QuickBite API listening on ${port}`));
+
+async function route(request, response, requestId) {
+  const url = new URL(request.url, `http://${request.headers.host}`);
+  const method = request.method;
+
+  if (method === 'GET' && url.pathname === '/health') {
+    await pool.query('SELECT 1');
+    return json(response, 200, { status: 'ok' }, requestId);
+  }
+
+  if (method === 'POST' && url.pathname === '/v1/auth/login') {
+    const { email, password } = await readJson(request);
+    if (typeof email !== 'string' || typeof password !== 'string') return json(response, 400, { error: 'invalid_credentials' }, requestId);
+    const result = await pool.query(
+      'SELECT u.id,u.email,u.role,u.password_hash,p.full_name FROM quickbite.users u JOIN quickbite.profiles p ON p.user_id=u.id WHERE u.email=$1 AND u.active',
+      [email.trim().toLowerCase()],
+    );
+    const user = result.rows[0];
+    if (!user || !verifyPassword(password, user.password_hash)) return json(response, 401, { error: 'invalid_credentials' }, requestId);
+    return json(response, 200, await issueSession(pool, user), requestId);
+  }
+
+  if (method === 'POST' && url.pathname === '/v1/auth/refresh') {
+    const { refreshToken } = await readJson(request);
+    if (typeof refreshToken !== 'string') return json(response, 401, { error: 'invalid_refresh_token' }, requestId);
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const result = await client.query(
+        "SELECT s.id AS session_id,u.id,u.email,u.role,p.full_name FROM quickbite.auth_sessions s JOIN quickbite.users u ON u.id=s.user_id JOIN quickbite.profiles p ON p.user_id=u.id WHERE s.refresh_token_hash=$1 AND s.revoked_at IS NULL AND s.expires_at>now() FOR UPDATE",
+        [hashToken(refreshToken)],
+      );
+      const user = result.rows[0];
+      if (!user) { await client.query('ROLLBACK'); return json(response, 401, { error: 'invalid_refresh_token' }, requestId); }
+      await client.query('UPDATE quickbite.auth_sessions SET revoked_at=now() WHERE id=$1', [user.session_id]);
+      const session = await issueSession(client, user);
+      await client.query('COMMIT');
+      return json(response, 200, session, requestId);
+    } finally { client.release(); }
+  }
+
+  if (method === 'POST' && url.pathname === '/v1/auth/logout') {
+    const { refreshToken } = await readJson(request);
+    if (typeof refreshToken === 'string') await pool.query('UPDATE quickbite.auth_sessions SET revoked_at=now() WHERE refresh_token_hash=$1', [hashToken(refreshToken)]);
+    return response.writeHead(204, { 'x-request-id': requestId }).end();
+  }
+
+  if (method === 'GET' && url.pathname === '/v1/menu') {
+    const { rows } = await pool.query('SELECT id,name,description,price,category_id,category_name,stock FROM quickbite.v_menu ORDER BY category_name,name');
+    return json(response, 200, { items: rows }, requestId);
+  }
+
+  if (method === 'GET' && url.pathname === '/v1/me') {
+    const auth = authenticate(request);
+    const user = await requireUser(auth);
+    return json(response, 200, { user: publicUser(user) }, requestId);
+  }
+
+  if (method === 'GET' && url.pathname === '/v1/capabilities') {
+    const auth = authenticate(request);
+    await requireUser(auth);
+    const capabilities = {
+      role: auth.role,
+      menu: true,
+      notifications: true,
+      preferences: true,
+      orders: canReadOrders(auth.role),
+      createOrders: canCreateOrders(auth.role),
+      family: auth.role === 'parent' || auth.role === 'admin',
+      operations: canOperateOrders(auth.role),
+      administration: canAdminister(auth.role),
+    };
+    return json(response, 200, capabilities, requestId);
+  }
+
+  if (method === 'GET' && url.pathname === '/v1/family/children') {
+    const auth = authenticate(request);
+    if (!['parent', 'admin'].includes(auth.role)) return json(response, 403, { error: 'forbidden' }, requestId);
+    const params = auth.role === 'parent' ? [auth.sub] : [];
+    const { rows } = await pool.query(
+      auth.role === 'parent'
+        ? "SELECT u.id,u.email,p.full_name,l.status,l.created_at FROM quickbite.family_links l JOIN quickbite.users u ON u.id=l.student_id JOIN quickbite.profiles p ON p.user_id=u.id WHERE l.parent_id=$1 AND l.status='active' ORDER BY p.full_name"
+        : "SELECT l.parent_id,l.student_id,l.status,l.created_at,parent.email AS parent_email,student.email AS student_email,pp.full_name AS parent_name,sp.full_name AS student_name FROM quickbite.family_links l JOIN quickbite.users parent ON parent.id=l.parent_id JOIN quickbite.users student ON student.id=l.student_id JOIN quickbite.profiles pp ON pp.user_id=l.parent_id JOIN quickbite.profiles sp ON sp.user_id=l.student_id ORDER BY l.created_at DESC",
+      params,
+    );
+    return json(response, 200, { items: rows }, requestId);
+  }
+
+  if (method === 'GET' && url.pathname === '/v1/orders') {
+    const auth = authenticate(request);
+    if (!canReadOrders(auth.role)) return json(response, 403, { error: 'forbidden' }, requestId);
+    let query;
+    let params = [];
+    if (auth.role === 'staff' || auth.role === 'admin') {
+      query = 'SELECT * FROM quickbite.orders ORDER BY created_at DESC';
+    } else if (auth.role === 'parent') {
+      query = `SELECT o.* FROM quickbite.orders o
+        WHERE o.user_id=$1 OR o.beneficiary_user_id IN (
+          SELECT student_id FROM quickbite.family_links WHERE parent_id=$1 AND status='active'
+        ) ORDER BY o.created_at DESC`;
+      params = [auth.sub];
+    } else {
+      query = 'SELECT * FROM quickbite.orders WHERE user_id=$1 OR beneficiary_user_id=$1 ORDER BY created_at DESC';
+      params = [auth.sub];
+    }
+    const { rows } = await pool.query(query, params);
+    return json(response, 200, { items: rows }, requestId);
+  }
+
+  if (method === 'POST' && url.pathname === '/v1/orders') {
+    const auth = authenticate(request);
+    if (!canCreateOrders(auth.role)) return json(response, 403, { error: 'forbidden' }, requestId);
+    const body = await readJson(request);
+    const { items, paymentMethod, idempotencyKey } = body;
+    if (!Array.isArray(items) || typeof paymentMethod !== 'string' || !isUuid(idempotencyKey)) return json(response, 400, { error: 'invalid_order_payload' }, requestId);
+    const beneficiaryUserId = auth.role === 'student' ? auth.sub : (body.beneficiaryUserId ?? auth.sub);
+    if (!isUuid(beneficiaryUserId)) return json(response, 400, { error: 'invalid_beneficiary' }, requestId);
+    const normalizedPaymentMethod = paymentMethod === 'credits' ? 'wallet' : paymentMethod === 'bre-b' ? 'bre_b' : paymentMethod;
+    const { rows } = await pool.query(
+      'SELECT * FROM quickbite.create_order_for_actor_tx($1,$2,$3,$4,$5)',
+      [auth.sub, beneficiaryUserId, JSON.stringify(items), normalizedPaymentMethod, idempotencyKey],
+    );
+    return json(response, 201, { order: rows[0] }, requestId);
+  }
+
+  if (method === 'PATCH' && url.pathname.startsWith('/v1/orders/')) {
+    const auth = authenticate(request);
+    if (!canOperateOrders(auth.role)) return json(response, 403, { error: 'forbidden' }, requestId);
+    const orderId = url.pathname.split('/').pop();
+    const { status } = await readJson(request);
+    const allowed = ['pending', 'preparing', 'ready', 'delivered', 'cancelled'];
+    if (!isUuid(orderId) || !allowed.includes(status)) return json(response, 400, { error: 'invalid_order_status' }, requestId);
+    const { rows } = await pool.query('UPDATE quickbite.orders SET status=$1 WHERE id=$2 RETURNING *', [status, orderId]);
+    if (!rows[0]) return json(response, 404, { error: 'order_not_found' }, requestId);
+    const recipients = [rows[0].user_id, rows[0].beneficiary_user_id].filter(Boolean);
+    await pool.query("INSERT INTO quickbite.notifications(user_id,title,body) SELECT DISTINCT unnest($1::uuid[]),'Pedido actualizado',$2", [recipients, `El pedido ${rows[0].pickup_code} está ${status}.`]);
+    return json(response, 200, { order: rows[0] }, requestId);
+  }
+
+  if (method === 'GET' && url.pathname === '/v1/preferences') {
+    const auth = authenticate(request);
+    await requireUser(auth);
+    const { rows } = await pool.query('SELECT theme,notification_preferences,dashboard_config,updated_at FROM quickbite.user_preferences WHERE user_id=$1', [auth.sub]);
+    return json(response, 200, { preferences: rows[0] ?? { theme: 'system', notification_preferences: {}, dashboard_config: {} } }, requestId);
+  }
+
+  if (method === 'PUT' && url.pathname === '/v1/preferences') {
+    const auth = authenticate(request);
+    await requireUser(auth);
+    const body = await readJson(request);
+    const theme = ['light', 'dark', 'system'].includes(body.theme) ? body.theme : 'system';
+    const notifications = body.notificationPreferences && typeof body.notificationPreferences === 'object' ? body.notificationPreferences : {};
+    const dashboard = body.dashboardConfig && typeof body.dashboardConfig === 'object' ? body.dashboardConfig : {};
+    const { rows } = await pool.query(
+      `INSERT INTO quickbite.user_preferences(user_id,theme,notification_preferences,dashboard_config,updated_at)
+       VALUES($1,$2,$3::jsonb,$4::jsonb,now())
+       ON CONFLICT(user_id) DO UPDATE SET theme=EXCLUDED.theme,notification_preferences=EXCLUDED.notification_preferences,dashboard_config=EXCLUDED.dashboard_config,updated_at=now()
+       RETURNING theme,notification_preferences,dashboard_config,updated_at`,
+      [auth.sub, JSON.stringify(notifications), JSON.stringify(dashboard), theme],
+    );
+    return json(response, 200, { preferences: rows[0] }, requestId);
+  }
+
+  if (method === 'GET' && url.pathname === '/v1/favorites') {
+    const auth = authenticate(request);
+    await requireUser(auth);
+    const { rows } = await pool.query(
+      'SELECT p.id,p.name,p.description,p.price,c.name AS category_name FROM quickbite.favorites f JOIN quickbite.products p ON p.id=f.product_id LEFT JOIN quickbite.categories c ON c.id=p.category_id WHERE f.user_id=$1 ORDER BY f.created_at DESC',
+      [auth.sub],
+    );
+    return json(response, 200, { items: rows }, requestId);
+  }
+
+  if (method === 'POST' && url.pathname === '/v1/favorites') {
+    const auth = authenticate(request);
+    await requireUser(auth);
+    const { productId } = await readJson(request);
+    if (!isUuid(productId)) return json(response, 400, { error: 'invalid_product' }, requestId);
+    await pool.query('INSERT INTO quickbite.favorites(user_id,product_id) VALUES($1,$2) ON CONFLICT DO NOTHING', [auth.sub, productId]);
+    return json(response, 201, { productId }, requestId);
+  }
+
+  if (method === 'DELETE' && url.pathname.startsWith('/v1/favorites/')) {
+    const auth = authenticate(request);
+    await requireUser(auth);
+    const productId = url.pathname.split('/').pop();
+    if (!isUuid(productId)) return json(response, 400, { error: 'invalid_product' }, requestId);
+    await pool.query('DELETE FROM quickbite.favorites WHERE user_id=$1 AND product_id=$2', [auth.sub, productId]);
+    return response.writeHead(204, { 'x-request-id': requestId }).end();
+  }
+
+  if (method === 'GET' && url.pathname === '/v1/notifications') {
+    const auth = authenticate(request);
+    await requireUser(auth);
+    const { rows } = await pool.query('SELECT * FROM quickbite.notifications WHERE user_id=$1 ORDER BY created_at DESC LIMIT 100', [auth.sub]);
+    return json(response, 200, { items: rows }, requestId);
+  }
+
+  if (method === 'POST' && url.pathname.startsWith('/v1/notifications/') && url.pathname.endsWith('/read')) {
+    const auth = authenticate(request);
+    await requireUser(auth);
+    const notificationId = url.pathname.split('/')[3];
+    if (!isUuid(notificationId)) return json(response, 400, { error: 'invalid_notification' }, requestId);
+    const { rows } = await pool.query('UPDATE quickbite.notifications SET read_at=COALESCE(read_at,now()) WHERE id=$1 AND user_id=$2 RETURNING *', [notificationId, auth.sub]);
+    if (!rows[0]) return json(response, 404, { error: 'notification_not_found' }, requestId);
+    return json(response, 200, { notification: rows[0] }, requestId);
+  }
+
+  if (method === 'POST' && url.pathname === '/v1/admin/family-links') {
+    const auth = authenticate(request);
+    if (!canAdminister(auth.role)) return json(response, 403, { error: 'forbidden' }, requestId);
+    const { parentId, studentId } = await readJson(request);
+    if (!isUuid(parentId) || !isUuid(studentId) || parentId === studentId) return json(response, 400, { error: 'invalid_family_link' }, requestId);
+    const { rows } = await pool.query(
+      `INSERT INTO quickbite.family_links(parent_id,student_id,status,updated_at)
+       SELECT $1,$2,'active',now()
+       WHERE EXISTS (SELECT 1 FROM quickbite.users WHERE id=$1 AND role='parent')
+         AND EXISTS (SELECT 1 FROM quickbite.users WHERE id=$2 AND role='student')
+       ON CONFLICT(parent_id,student_id) DO UPDATE SET status='active',updated_at=now()
+       RETURNING *`,
+      [parentId, studentId],
+    );
+    if (!rows[0]) return json(response, 400, { error: 'invalid_family_members' }, requestId);
+    return json(response, 201, { link: rows[0] }, requestId);
+  }
+
+  if (method === 'GET' && url.pathname === '/v1/admin/overview') {
+    const auth = authenticate(request);
+    if (!canAdminister(auth.role)) return json(response, 403, { error: 'forbidden' }, requestId);
+    const [users, orders, sales, stock] = await Promise.all([
+      pool.query('SELECT role,COUNT(*)::int AS count FROM quickbite.users GROUP BY role ORDER BY role'),
+      pool.query("SELECT status,COUNT(*)::int AS count FROM quickbite.orders GROUP BY status ORDER BY status"),
+      pool.query("SELECT COALESCE(SUM(total),0)::numeric(12,2) AS total FROM quickbite.orders WHERE payment_status='approved'"),
+      pool.query('SELECT COUNT(*)::int AS low_stock FROM quickbite.inventory WHERE quantity <= 5'),
+    ]);
+    return json(response, 200, {
+      usersByRole: users.rows,
+      ordersByStatus: orders.rows,
+      approvedSales: sales.rows[0]?.total ?? 0,
+      lowStockProducts: stock.rows[0]?.low_stock ?? 0,
+    }, requestId);
+  }
+
+  return json(response, 404, { error: 'not_found' }, requestId);
+}
+
+http.createServer(async (request, response) => {
+  const requestId = randomUUID();
+  const origin = request.headers.origin;
+  if (origin && origins.has(origin)) response.setHeader('access-control-allow-origin', origin);
+  response.setHeader('vary', 'Origin');
+  response.setHeader('access-control-allow-headers', 'authorization,content-type');
+  response.setHeader('access-control-allow-methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
+  if (request.method === 'OPTIONS') return response.writeHead(204).end();
+  try {
+    await route(request, response, requestId);
+  } catch (error) {
+    const known = ['missing_token', 'invalid_token', 'expired_token'];
+    const status = known.includes(error.message) ? 401 : error.statusCode === 403 ? 403 : error.message === 'invalid_json' ? 400 : 500;
+    console.error(JSON.stringify({ requestId, message: error.message }));
+    json(response, status, { error: status === 500 ? 'internal_error' : error.message }, requestId);
+  }
+}).listen(port, () => console.log(`QuickBite API listening on ${port}`));
