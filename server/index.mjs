@@ -77,8 +77,20 @@ async function route(request,response,requestId){
   const fullName=typeof body.fullName==='string'?body.fullName.trim():'';
   const documentNumber=typeof body.documentNumber==='string'?body.documentNumber.trim():'';
   const password=typeof body.password==='string'?body.password:'';
-  if(role!=='parent'||!isEmail(email)||fullName.length<3||fullName.length>120||!/^[0-9]{6,15}$/.test(documentNumber)||password.length<8||password.length>200||body.privacyConsent!==true){
-    return json(response,400,{error:'invalid_parent_registration'},requestId);
+  const privacyConsent=body.privacyConsent===true;
+  if(!['student','parent'].includes(role)||!isEmail(email)||fullName.length<3||fullName.length>120||!/^[0-9]{6,15}$/.test(documentNumber)||password.length<8||password.length>200||!privacyConsent){
+    return json(response,400,{error:'invalid_registration'},requestId);
+  }
+  if(role==='student'){
+    const sectionId=typeof body.sectionId==='string'?body.sectionId:null;
+    const gradeId=typeof body.gradeId==='string'?body.gradeId:null;
+    const courseId=typeof body.courseId==='string'?body.courseId:null;
+    const guardianName=typeof body.guardianName==='string'?body.guardianName.trim():'';
+    const guardianRelationship=typeof body.guardianRelationship==='string'?body.guardianRelationship.trim():'';
+    const guardianEmail=typeof body.guardianEmail==='string'?body.guardianEmail.trim().toLowerCase():'';
+    if(!isUuid(sectionId)||!isUuid(gradeId)||!isUuid(courseId)||guardianName.length<3||guardianRelationship.length<2||!isEmail(guardianEmail)||body.studentAcknowledged!==true||body.guardianAuthorized!==true){
+      return json(response,400,{error:'invalid_student_registration'},requestId);
+    }
   }
   const client=await pool.connect();
   let user;
@@ -89,12 +101,19 @@ async function route(request,response,requestId){
       await client.query('ROLLBACK');
       return json(response,409,{error:existing.rows[0].email===email?'email_already_exists':'document_already_exists'},requestId);
     }
-    const created=await client.query('INSERT INTO quickbite.users(email,password_hash,role,active) VALUES($1,$2,$3,true) RETURNING id,email,role',[email,passwordHash(password),'parent']);
+    const created=await client.query('INSERT INTO quickbite.users(email,password_hash,role,active) VALUES($1,$2,$3,true) RETURNING id,email,role',[email,passwordHash(password),role]);
     user=created.rows[0];
     await client.query('INSERT INTO quickbite.profiles(user_id,full_name) VALUES($1,$2)',[user.id,fullName]);
-    await client.query("INSERT INTO quickbite.user_identity(user_id,document_type,document_number,privacy_consent_at,privacy_policy_version) VALUES($1,'national_id',$2,now(),$3)",[user.id,documentNumber,'2026-09-27']);
+    await client.query("INSERT INTO quickbite.user_identity(user_id,document_type,document_number,privacy_consent_at,privacy_policy_version,representative_authorization_at,minor_heard_at) VALUES($1,'national_id',$2,now(),$3,$4,$5)",[user.id,documentNumber,'2026-09-27',role==='student',role==='student']);
     await client.query("INSERT INTO quickbite.user_preferences(user_id,theme) VALUES($1,'system') ON CONFLICT(user_id) DO NOTHING",[user.id]);
-    const session=await issueSession(client,user,'parent');
+    if(role==='student'){
+      const {sectionId,gradeId,courseId,guardianName,guardianRelationship,guardianEmail}=body;
+      const academic=await client.query('SELECT s.id AS section_id,g.id AS grade_id,c.id AS course_id FROM quickbite.academic_sections s JOIN quickbite.academic_grades g ON g.section_id=s.id JOIN quickbite.academic_courses c ON c.grade_id=g.id WHERE s.id=$1 AND g.id=$2 AND c.id=$3 AND s.active=true AND g.active=true AND c.active=true',[sectionId,gradeId,courseId]);
+      if(!academic.rows[0]) throw new Error('invalid_student_academic_assignment');
+      await client.query('INSERT INTO quickbite.student_enrollments(user_id,section_id,grade_id,course_id) VALUES($1,$2,$3,$4)',[user.id,sectionId,gradeId,courseId]);
+      await client.query('INSERT INTO quickbite.student_registration_consents(student_id,guardian_name,guardian_relationship,guardian_email,student_acknowledged,guardian_authorized,purpose) VALUES($1,$2,$3,$4,true,true,$5)',[user.id,guardianName,guardianRelationship,guardianEmail,'Gestionar la cuenta estudiantil, pedidos, pagos, historial, puntos y comunicaciones operativas de QuickBite.']);
+    }
+    const session=await issueSession(client,user,role);
     await client.query('COMMIT');
     return json(response,201,session,requestId);
   }catch(error){
