@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, BookOpen, CheckCircle2, Edit3, GraduationCap, LogOut, Plus, Power, RefreshCw, Trash2 } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Edit3, GraduationCap, LogOut, Plus, Power, RefreshCw, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { quickbiteApi } from '../../../services/api/quickbiteApi';
 import { useAuthStore } from '../../../store/authStore';
@@ -22,8 +22,7 @@ export function CoreAdminAcademicPage(){
  const load=async()=>{setLoading(true);try{const data=await quickbiteApi().adminAcademicStructure();setSections(data.sections);setGrades(data.grades);setCourses(data.courses);}catch(e){toast.error(e instanceof Error?e.message:'No se pudo cargar la estructura académica.');}finally{setLoading(false);}};
  useEffect(()=>{void load();},[]);
 
- const activeSections=useMemo(()=>sections.filter(x=>x.active),[sections]);
- const activeGrades=useMemo(()=>grades.filter(x=>x.active&&x.section_id===editing.parentId),[grades,editing.parentId]);
+ const activeSections=sections.filter((section)=>section.active);
 
  const openNew=(target:Level,parentId='')=>{setLevel(target);setEditing({id:'',level:target,name:'',displayOrder:1,active:true,parentId});setShowEditor(true);};
  const openEdit=(item:Section|Grade|Course,target:Level,parentId='')=>{setLevel(target);setEditing({id:item.id,level:target,name:item.name,displayOrder:item.display_order,active:item.active,parentId});setShowEditor(true);};
