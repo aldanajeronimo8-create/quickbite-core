@@ -4,7 +4,7 @@ import pg from 'pg';
 
 const root = process.cwd();
 const envPath = path.join(root, '.env');
-const migrationsDir = path.join(root, 'supabase', 'migrations');
+const migrationsDir = path.join(root, 'database', 'migrations');
 
 function parseEnv(raw) {
   const env = {};
@@ -18,17 +18,17 @@ function parseEnv(raw) {
 
 function readEnv() {
   if (!fs.existsSync(envPath)) {
-    throw new Error('No existe .env. Copia .env.example a .env y configura SUPABASE_DB_URL.');
+    throw new Error('No existe .env. Copia .env.example a .env y configura DATABASE_URL.');
   }
   return parseEnv(fs.readFileSync(envPath, 'utf8'));
 }
 
 async function main() {
   const env = readEnv();
-  const dbUrl = process.env.SUPABASE_DB_URL || env.SUPABASE_DB_URL;
+  const dbUrl = process.env.DATABASE_URL || env.DATABASE_URL;
 
   if (!dbUrl) {
-    throw new Error('SUPABASE_DB_URL no esta configurada. Agregala temporalmente en .env para aplicar migraciones.');
+    throw new Error('DATABASE_URL no esta configurada. Configúrala para aplicar las migraciones de QuickBite Core.');
   }
 
   const files = fs
@@ -52,7 +52,7 @@ async function main() {
     await client.end();
   }
 
-  console.log('Migraciones aplicadas correctamente.');
+  console.log('Migraciones de QuickBite Core aplicadas correctamente.');
 }
 
 main().catch((error) => {
