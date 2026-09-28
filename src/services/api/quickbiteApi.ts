@@ -1,4 +1,4 @@
-export type ApiUser = { id: string; email: string; role: 'student' | 'parent' | 'admin' | 'both' | 'student_parent'; fullName: string };
+export type ApiUser = { id: string; email: string; role: 'student' | 'parent' | 'staff' | 'admin'; fullName: string };
 export type ApiSession = { accessToken: string; refreshToken: string; expiresIn: number; user: ApiUser };
 export type MenuItem = { id: string; name: string; description: string | null; price: number; category_id: string | null; category_name: string | null; stock: number };
 export type ApiOrder = { id: string; user_id: string; total: number; status: string; payment_status: string; payment_method: string; pickup_code: string; created_at: string };
