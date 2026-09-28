@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { CheckCircle2, Clock3, LogOut, Minus, Plus, ShoppingBag } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { quickbiteApi, type MenuItem, type ApiOrder } from '../../../services/api/quickbiteApi';
 import { useAuthStore } from '../../../store/authStore';
@@ -64,7 +65,7 @@ export function CoreStudentMenuPage() {
       <header className="border-b bg-[var(--qb-surface,#fff)] px-4 py-4 shadow-sm sm:px-6 lg:px-10">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4">
           <div><p className="text-xs font-black uppercase tracking-[.18em] text-[var(--qb-primary,#1747B8)]">QuickBite</p><h1 className="text-2xl font-black">Portal estudiante</h1><p className="text-sm opacity-70">{user?.full_name}{user?.course ? ` · ${user.course}` : ''}</p></div>
-          <button type="button" onClick={() => void signOut()} className="inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-bold"><LogOut className="h-4 w-4" />Salir</button>
+          <div className="flex items-center gap-2"><Link to="/choose-role" className="rounded-xl border px-4 py-2 text-sm font-bold">Cambiar espacio</Link><button type="button" onClick={() => void signOut()} className="inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-bold"><LogOut className="h-4 w-4" />Salir</button></div>
         </div>
       </header>
       <div className="mx-auto grid max-w-6xl gap-6 px-4 py-6 lg:grid-cols-[1fr_360px] sm:px-6 lg:px-10">
