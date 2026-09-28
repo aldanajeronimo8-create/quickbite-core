@@ -116,7 +116,7 @@ export function LoginPage() {
   };
 
   return (
-    <div data-qb-auth-mode="public" className="qb-auth qb-auth--public min-h-screen flex flex-col items-center justify-center p-5 transition-colors duration-500">
+    <div data-qb-auth-mode="public" className="qb-auth qb-auth--public min-h-[100svh] overflow-y-auto flex flex-col items-center justify-start lg:justify-center p-5 transition-colors duration-500">
       <div className="w-full max-w-sm relative z-10">
         <div className="qb-auth-brand text-center mb-7">
           <QuickBiteLogo className="mb-3 h-[4.5rem] w-[4.5rem] rounded-3xl" />
