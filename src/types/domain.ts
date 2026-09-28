@@ -9,7 +9,9 @@ export interface Profile {
   protected?: boolean;
   ti?: string | null;
   created_at: string;
+  section?: string | null;
   grade?: string | null;
+  course?: string | null;
   section_id?: string | null;
   grade_id?: string | null;
   course_id?: string | null;
