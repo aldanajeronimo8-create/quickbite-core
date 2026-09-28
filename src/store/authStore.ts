@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { Profile } from '../types/domain';
 import { writeAuditLog } from '../lib/auditLog';
 import { quickbiteApi, type ApiSession } from '../services/api/quickbiteApi';
+import { signInWithFirebaseGoogle, signOutFirebase } from '../services/firebaseAuth';
 
 const ACTIVE_STUDENT_STORAGE_KEY = 'quickbite.parent.activeStudent';
 
@@ -37,6 +38,7 @@ interface AuthState {
   loading: boolean;
   setUser: (user: Profile | null) => void;
   signIn: (email: string, password: string, role?: 'student' | 'parent' | 'staff' | 'admin') => Promise<void>;
+  signInWithFirebaseGoogle: () => Promise<{ status: 'authenticated'; user: Profile } | { status: 'onboarding_required'; email: string; fullName: string }>;
   switchRole: (role: 'student' | 'parent' | 'staff' | 'admin') => Promise<void>;
   signOut: () => Promise<void>;
   signUp: (email: string, password: string, fullName: string, inviteCode: string) => Promise<void>;
@@ -60,6 +62,22 @@ export const useAuthStore = create<AuthState>((set) => ({
     } catch (error) {
       writeAuditLog({ action: 'auth.error', actorEmail: normalizedEmail, metadata: { reason: String(error) } });
       throw error instanceof Error ? error : new Error('No se pudo iniciar sesión.');
+    }
+  },
+
+  signInWithFirebaseGoogle: async () => {
+    clearDelegatedStudentContext();
+    try {
+      const identity = await signInWithFirebaseGoogle();
+      const result = await api().exchangeFirebaseToken(identity.idToken);
+      if (result.status === 'onboarding_required') return result;
+      const profile = profileFromSession(result.session);
+      writeAuditLog({ action: 'auth.login.google', actorId: profile.id, actorEmail: profile.email, metadata: { provider: 'firebase/google' } });
+      set({ user: profile, session: { token: result.session.accessToken }, loading: false });
+      return { status: 'authenticated', user: profile };
+    } catch (error) {
+      await signOutFirebase().catch(() => undefined);
+      throw error instanceof Error ? error : new Error('No se pudo iniciar sesión con Google.');
     }
   },
 
