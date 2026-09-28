@@ -60,7 +60,7 @@ export class QuickBiteApi {
   deleteRecessSchedule(id: string) { return this.request<void>('/v1/admin/recess-schedules/' + id, { method: 'DELETE' }); }
 
   updateOrderStatus(orderId: string, status: 'pending' | 'preparing' | 'ready' | 'delivered' | 'cancelled') { return this.request<{ order: ApiOrder }>('/v1/orders/' + orderId, { method: 'PATCH', body: JSON.stringify({ status }) }); }
-  familyChildren() { return this.request<{ items: Array<{ id: string; email: string; full_name: string; status: string; created_at: string }> }>('/v1/family/children'); }
+  familyChildren() { return this.request<{ items: Array<{ id: string; email: string; full_name: string; status: string; created_at: string; section: string | null; grade: string | null; course: string | null }> }>('/v1/family/children'); }
   updateAdminUser(input: { id: string; email: string; fullName: string; role?: ApiRole; password?: string }) { return this.request<{ user: ApiUser }>('/v1/admin/users/' + input.id, { method: 'PATCH', body: JSON.stringify(input) }); }
   createInternalUser(input: { email: string; fullName: string; role: 'staff' | 'admin'; password: string }) { return this.request<{ user: ApiUser }>('/v1/admin/users', { method: 'POST', body: JSON.stringify(input) }); }
   updateProtectedCredentials(input: { id: string; email: string; password?: string }) { return this.request<{ user: { id: string; email: string } }>('/v1/admin/users/' + input.id + '/protected-credentials', { method: 'POST', body: JSON.stringify(input) }); }
