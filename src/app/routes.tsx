@@ -4,6 +4,8 @@ import { PublicHomePage } from './pages/PublicHomePage';
 import { PrivacyPage } from './pages/PrivacyPage';
 import { DataRightsPage } from './pages/DataRightsPage';
 import { TermsPage } from './pages/TermsPage';
+import { GoogleOnboardingPage } from './pages/GoogleOnboardingPage';
+import { GoogleCompletePage } from './pages/GoogleCompletePage';
 import { RoleProtectedRoute } from './components/RoleProtectedRoute';
 import { CoreStudentMenuPage } from './pages/student/CoreStudentMenuPage';
 import { CoreParentPage } from './pages/parent/CoreParentPage';
@@ -18,6 +20,8 @@ const router = createBrowserRouter([
   { path: '/privacy', element: <PrivacyPage /> },
   { path: '/data-rights', element: <DataRightsPage /> },
   { path: '/terms', element: <TermsPage /> },
+  { path: '/google/onboarding', element: <GoogleOnboardingPage /> },
+  { path: '/google/complete', element: <GoogleCompletePage /> },
   { path: '/menu', element: <RoleProtectedRoute role="student"><CoreStudentMenuPage /></RoleProtectedRoute> },
   { path: '/parent/family', element: <RoleProtectedRoute role="parent"><CoreParentPage /></RoleProtectedRoute> },
   { path: '/staff', element: <RoleProtectedRoute role="staff"><StaffDashboardPage /></RoleProtectedRoute> },
