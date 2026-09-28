@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { canAccessAdmin, canAccessStudent } from './access';
 
 describe('combined and administrative preview access', () => {
-  it('lets a combined account access both interfaces', () => {
-    expect(canAccessAdmin('both')).toBe(true);
-    expect(canAccessStudent('both')).toBe(true);
+  it('keeps staff scoped to staff access and out of student/admin interfaces', () => {
+    expect(canAccessAdmin('staff')).toBe(false);
+    expect(canAccessStudent('staff')).toBe(false);
   });
 
   it('keeps normal single-role access scoped while allowing admin student preview', () => {
