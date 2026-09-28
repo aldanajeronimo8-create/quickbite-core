@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>QuickBite Core</title>
+  <style>
+    :root { color-scheme: light dark; font-family: Inter, system-ui, sans-serif; }
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #0f172a; color: #e2e8f0; }
+    main { width: min(680px, calc(100% - 32px)); padding: 32px; border: 1px solid #334155; border-radius: 18px; background: #111827; box-sizing: border-box; }
+    h1 { margin: 0 0 8px; font-size: 28px; }
+    p { color: #94a3b8; line-height: 1.6; }
+    code { padding: 2px 6px; border-radius: 6px; background: #1e293b; }
+    .ok { display: inline-flex; align-items: center; gap: 8px; margin-top: 12px; color: #86efac; font-weight: 700; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; background: #22c55e; }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="ok"><span class="dot"></span> QuickBite Core desplegado</div>
+    <h1>QuickBite Core</h1>
+    <p>Servicio API independiente. El frontend QuickBite consume este proyecto mediante <code>/v1/*</code>.</p>
+    <p>Salud del servicio: <code>/health</code></p>
+  </main>
+</body>
+</html>
