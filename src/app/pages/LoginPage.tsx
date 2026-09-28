@@ -36,6 +36,13 @@ export function LoginPage() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [authenticatedUserId, setAuthenticatedUserId] = useState('');
   const googleErrorCode = new URLSearchParams(window.location.search).get('google_error');
+  const googleErrorMessage = googleErrorCode === 'google_not_configured'
+    ? 'El acceso con Google todavía no está configurado en este entorno.'
+    : googleErrorCode === 'google_internal_account_not_allowed'
+      ? 'Las cuentas de personal de cafetería y administración deben iniciar sesión con correo y contraseña.'
+      : googleErrorCode
+        ? 'No se pudo completar el acceso con Google. Vuelve a intentarlo.'
+        : '';
 
   const handleGoogle = () => { setGoogleLoading(true); const base = import.meta.env.VITE_API_BASE_URL || window.location.origin; window.location.assign(base.replace(/\/$/,'') + '/v1/auth/google/start'); };
 
@@ -131,7 +138,7 @@ export function LoginPage() {
         <div className="qb-auth-card rounded-3xl shadow-2xl p-7">
           <div className="mb-5">
             <div className="flex items-center gap-2 mb-3"><GraduationCap className="qb-auth-role-icon w-5 h-5" /><h2 className="text-lg font-bold">Acceso a QuickBite</h2></div>
-            <p className="text-sm">Usa las credenciales asignadas por la institución. El sistema determina tus permisos después de autenticarte.</p>
+            <p className="text-sm">Usa tus credenciales de QuickBite. El sistema determina tus permisos después de autenticarte. El acceso con Google está disponible para estudiantes y padres de familia.</p>
           </div>
           <form onSubmit={(event) => void handleLogin(event)} autoComplete="on" className="space-y-4">
             <div>
@@ -141,7 +148,7 @@ export function LoginPage() {
             <div>
               <Label htmlFor="login-password" className="text-sm">Contraseña</Label>
               <div className="relative mt-1"><Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" /><Input name="current-password" autoComplete="current-password" id="login-password" type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} className="pl-9 pr-10" /><button type="button" onClick={() => setShowPassword((current) => !current)} className="qb-auth-icon-button absolute right-2 top-1/2 -translate-y-1/2" aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}>{showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}</button></div>
-              {error && <p className="qb-auth-error text-xs mt-1">{error}</p>}{googleErrorCode && <p className="qb-auth-error text-xs mt-2">{googleErrorCode === 'google_not_configured' ? 'El acceso con Google todavía no está configurado en este entorno.' : 'No se pudo completar el acceso con Google. Vuelve a intentarlo.'}</p>}
+              {error && <p className="qb-auth-error text-xs mt-1">{error}</p>}{googleErrorMessage && <p className="qb-auth-error text-xs mt-2">{googleErrorMessage}</p>}
             </div>
             <Button type="submit" disabled={loading} className="qb-auth-primary w-full font-semibold py-6 rounded-xl">{loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Verificando...</> : 'Iniciar sesión'}</Button>
             <div className="my-5 flex items-center gap-3 text-xs text-slate-400"><span className="h-px flex-1 bg-slate-200" /><span>o</span><span className="h-px flex-1 bg-slate-200" /></div>
