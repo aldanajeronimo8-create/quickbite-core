@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { ClipboardList, ScanLine } from 'lucide-react';
+import { ClipboardList } from 'lucide-react';
 import { useAuthStore } from '../../../store/authStore';
 
 export function StaffDashboardPage() {
