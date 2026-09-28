@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { ArrowLeft, Shield } from 'lucide-react';
 import { RouterProvider } from 'react-router-dom';
 import { router } from './routes';
-import { Toaster } from './components/ui/sonner';
+import { Toaster, toast } from './components/ui/sonner';
 import { useAuthStore } from '../store/authStore';
 import { useDataStore } from '../store/dataStore';
 import { ErrorBoundary } from './components/system/ErrorBoundary';
@@ -102,7 +102,10 @@ function AppContent() {
   useEffect(() => { if (!user) return; return subscribeRealtime(); }, [subscribeRealtime, user]);
   useEffect(() => {
     syncVisualInterfaceScope(router.state.location.pathname);
-    return router.subscribe((state) => syncVisualInterfaceScope(state.location.pathname));
+    return router.subscribe((state) => {
+      toast.dismiss();
+      syncVisualInterfaceScope(state.location.pathname);
+    });
   }, []);
 
   return <ErrorBoundary><VisualThemeProvider><RouterProvider router={router} /><AdminStudentPreviewBar /><SessionRestorer />{user && <UserThemePreference />}<ThemePreferenceBoundary /></VisualThemeProvider><Toaster position="top-center" /></ErrorBoundary>;
