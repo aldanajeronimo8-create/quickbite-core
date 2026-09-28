@@ -10,11 +10,11 @@ import { bindStudentUser, clearBoundStudentUser, getBoundStudentUserId } from '.
 import { toast } from 'sonner';
 
 type Mode = 'student' | 'parent' | 'staff' | 'admin';
-const internalLabels: Record<Mode, { label: string; icon: typeof GraduationCap }> = {
-  student: { label: 'Estudiante', icon: GraduationCap },
-  parent: { label: 'Padre de familia', icon: Users },
-  staff: { label: 'Personal de cafetería', icon: Store },
-  admin: { label: 'Administración', icon: ShieldCheck },
+const internalLabels: Record<Mode, { label: string; area: string; icon: typeof GraduationCap }> = {
+  student: { label: 'Estudiante', area: 'Menú y pedidos', icon: GraduationCap },
+  parent: { label: 'Padre de familia', area: 'Portal familiar', icon: Users },
+  staff: { label: 'Personal de cafetería', area: 'Operación de cafetería', icon: Store },
+  admin: { label: 'Administración', area: 'Panel administrativo', icon: ShieldCheck },
 };
 
 function goToRole(navigate: ReturnType<typeof useNavigate>, role: Mode, userId: string) {
@@ -109,7 +109,7 @@ export function LoginPage() {
             <div className="grid gap-3">
               {availableRoles.map((role) => {
                 const { label, icon: Icon } = internalLabels[role];
-                return <button key={role} type="button" onClick={() => void chooseRole(role)} disabled={loading} className="flex items-center gap-3 rounded-2xl border p-4 text-left font-semibold transition hover:shadow-md disabled:opacity-50"><Icon className="h-5 w-5" /><span>{label}</span></button>;
+                return <button key={role} type="button" onClick={() => void chooseRole(role)} disabled={loading} className="flex items-center gap-3 rounded-2xl border p-4 text-left transition hover:shadow-md disabled:opacity-50"><Icon className="h-5 w-5 shrink-0" /><span><span className="block font-semibold">{label}</span><span className="block text-xs text-slate-500">{internalLabels[role].area}</span></span></button>;
               })}
             </div>
             {error && <p className="qb-auth-error text-xs mt-3">{error}</p>}
