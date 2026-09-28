@@ -15,6 +15,5 @@
       "source": "/((?!api(?:/|$)|assets(?:/|$)).*)",
       "destination": "/index.html"
     }
-  ],
-  "installCommand": "pnpm install --no-frozen-lockfile"
+  ]
 }
