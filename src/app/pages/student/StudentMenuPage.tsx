@@ -86,23 +86,20 @@ export function StudentMenuPage() {
 
   const activeStudent = useStudentContextStore((state) => state.activeStudent);
   const signOut = useAuthStore((state) => state.signOut);
+  const authUser = useAuthStore((state) => state.user);
   const clearActiveStudent = useStudentContextStore((state) => state.clearActiveStudent);
 
   useEffect(() => {
     let active = true;
     async function initializeStudentSession() {
       try {
-        const client = requireSupabaseClient();
-        const { data: sessionData, error: sessionError } = await client.auth.getSession();
-        if (sessionError) throw sessionError;
-        const authUser = sessionData.session?.user;
-        if (!authUser) { navigate('/'); return; }
+        if (!authUser) { navigate('/login', { replace: true }); return; }
         const effectiveStudentId = activeStudent?.id ?? authUser.id;
         const { data: profile, error } = await client.from('profiles').select('id,email,full_name,role,ti').eq('id', effectiveStudentId).maybeSingle();
         if (error) throw error;
         if (!profile || (!activeStudent && !canAccessStudent(profile.role))) {
-          if (!activeStudent) await client.auth.signOut();
-          navigate('/');
+          if (!activeStudent) await signOut();
+          navigate('/login', { replace: true });
           return;
         }
         const { data: wallet, error: walletError } = await client.from('wallet_accounts').select('balance').eq('user_id', effectiveStudentId).maybeSingle();
