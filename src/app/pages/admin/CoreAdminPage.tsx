@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Clock3, LogOut, RefreshCw, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
-import { quickbiteApi, type ApiOrder } from '../../services/api/quickbiteApi';
-import { useAuthStore } from '../../store/authStore';
+import { quickbiteApi, type ApiOrder } from '../../../services/api/quickbiteApi';
+import { useAuthStore } from '../../../store/authStore';
 
 const money=(value:number)=>new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}).format(value);
 const labels:{[key:string]:string}={pending:'Pendiente',preparing:'Preparando',ready:'Listo',delivered:'Entregado',cancelled:'Cancelado'};
