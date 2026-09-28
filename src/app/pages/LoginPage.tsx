@@ -48,7 +48,10 @@ export function LoginPage() {
       await signIn(email, password);
       const currentUser = useAuthStore.getState().user;
       if (!currentUser) throw new Error('No se pudo recuperar la sesión.');
-      const roles = currentUser.roles as Mode[];
+      const validRoles: Mode[] = ['student', 'parent', 'staff', 'admin'];
+      const roles = currentUser.protected
+        ? validRoles
+        : Array.from(new Set((currentUser.roles ?? [currentUser.role]).filter((role): role is Mode => validRoles.includes(role as Mode))));
       setAuthenticatedUserId(currentUser.id);
       if (roles.length > 1) {
         setAvailableRoles(roles);
@@ -102,7 +105,7 @@ export function LoginPage() {
           </div>
           <div className="qb-auth-card rounded-3xl shadow-2xl p-7">
             <h2 className="text-xl font-bold">Selecciona tu espacio</h2>
-            <p className="text-sm mt-1 mb-5">Esta opción aparece después de verificar tus credenciales y solo muestra los entornos autorizados para esta cuenta.</p>
+            <p className="text-sm mt-1 mb-3">Tus credenciales ya fueron verificadas. Elige el entorno al que quieres entrar.</p><p className="text-xs mb-5 text-slate-500">En las cuentas con permisos completos aparecen Estudiante, Padre de familia, Personal de cafetería y Administración.</p>
             <div className="grid gap-3">
               {availableRoles.map((role) => {
                 const { label, icon: Icon } = internalLabels[role];
