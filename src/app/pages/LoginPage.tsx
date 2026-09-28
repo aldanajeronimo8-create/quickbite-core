@@ -27,15 +27,13 @@ function goToRole(navigate: ReturnType<typeof useNavigate>, role: Mode, userId: 
 
 export function LoginPage() {
   const navigate = useNavigate();
-  const { signIn, signOut, switchRole, signInWithFirebaseGoogle } = useAuthStore();
+  const { signIn, signOut, signInWithFirebaseGoogle } = useAuthStore();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [availableRoles, setAvailableRoles] = useState<Mode[]>([]);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [authenticatedUserId, setAuthenticatedUserId] = useState('');
   const googleErrorCode = new URLSearchParams(window.location.search).get('google_error');
   const googleConfigured = isFirebaseGoogleConfigured();
   const googleErrorMessage = googleErrorCode === 'google_not_configured'
@@ -74,7 +72,11 @@ export function LoginPage() {
               ? 'Cerraste la ventana de Google antes de completar el acceso.'
               : raw === 'auth/popup-blocked'
                 ? 'El navegador bloqueó la ventana de Google. Permite ventanas emergentes para QuickBite e inténtalo de nuevo.'
-                : raw;
+                : raw === 'firebase_google_provider_not_configured'
+                  ? 'Google no está habilitado como proveedor de acceso en Firebase. Activa Google en Authentication > Sign-in method del proyecto QuickBite.'
+                  : raw === 'firebase_unauthorized_domain'
+                    ? 'Este dominio aún no está autorizado en Firebase Authentication.'
+                    : raw;
       setError(message);
       toast.error(message);
     } finally {
@@ -95,9 +97,8 @@ export function LoginPage() {
       const roles = currentUser.protected
         ? validRoles
         : Array.from(new Set((currentUser.roles ?? [currentUser.role]).filter((role): role is Mode => validRoles.includes(role as Mode))));
-      setAuthenticatedUserId(currentUser.id);
       if (roles.length > 1) {
-        setAvailableRoles(roles);
+        navigate('/choose-role');
         toast.success('Identidad verificada. Selecciona tu espacio de trabajo.');
       } else {
         goToRole(navigate, currentUser.role as Mode, currentUser.id);
@@ -111,57 +112,14 @@ export function LoginPage() {
     } finally { setLoading(false); }
   };
 
-  const chooseRole = async (role: Mode) => {
-    if (!authenticatedUserId || loading) return;
-    setLoading(true);
-    setError('');
-    try {
-      await switchRole(role);
-      goToRole(navigate, role, authenticatedUserId);
-      toast.success(`Entorno de ${internalLabels[role].label.toLowerCase()} activado.`);
-    } catch (cause) {
-      const message = cause instanceof Error ? cause.message : 'No se pudo cambiar de entorno.';
-      setError(message);
-      toast.error(message);
-    } finally { setLoading(false); }
-  };
-
   const changeStudentOnDevice = async () => {
     await signOut();
     clearBoundStudentUser();
-    setAvailableRoles([]);
-    setAuthenticatedUserId('');
     setEmail('');
     setPassword('');
     setError('');
     toast.success('Este dispositivo ya puede vincularse a otro estudiante.');
   };
-
-  if (availableRoles.length > 1) {
-  return (
-      <div className="qb-auth qb-auth--private min-h-screen flex flex-col items-center justify-center p-5">
-        <div className="w-full max-w-md">
-          <div className="qb-auth-brand text-center mb-7">
-            <QuickBiteLogo className="mb-3 h-[4.5rem] w-[4.5rem] rounded-3xl" />
-            <h1 className="qb-auth-brand-title text-3xl font-bold tracking-tight">QuickBite</h1>
-            <p className="qb-auth-brand-subtitle text-sm mt-1">Acceso seguro</p>
-          </div>
-          <div className="qb-auth-card rounded-3xl shadow-2xl p-7">
-            <h2 className="text-xl font-bold">Selecciona tu espacio</h2>
-            <p className="text-sm mt-1 mb-3">Tus credenciales ya fueron verificadas. Elige el entorno al que quieres entrar.</p><p className="text-xs mb-5 text-slate-500">En las cuentas con permisos completos aparecen Estudiante, Padre de familia, Personal de cafetería y Administración.</p>
-            <div className="grid gap-3">
-              {availableRoles.map((role) => {
-                const { label, icon: Icon } = internalLabels[role];
-                return <button key={role} type="button" onClick={() => void chooseRole(role)} disabled={loading} className="flex items-center gap-3 rounded-2xl border p-4 text-left transition hover:shadow-md disabled:opacity-50"><Icon className="h-5 w-5 shrink-0" /><span><span className="block font-semibold">{label}</span><span className="block text-xs text-slate-500">{internalLabels[role].area}</span></span></button>;
-              })}
-            </div>
-            {error && <p className="qb-auth-error text-xs mt-3">{error}</p>}
-            <button type="button" onClick={() => void signOut().then(() => { setAvailableRoles([]); setAuthenticatedUserId(''); })} disabled={loading} className="mt-5 text-xs font-semibold underline">Cerrar sesión</button>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div data-qb-auth-mode="public" className="qb-auth qb-auth--public min-h-screen flex flex-col items-center justify-center p-5 transition-colors duration-500">
