@@ -61,7 +61,7 @@ export function ParentRegisterPage() {
           <PasswordField label="Confirmar contraseña" value={form.confirmPassword} visible={showConfirm} onToggle={()=>setShowConfirm(value=>!value)} onChange={v=>update('confirmPassword',v)}/>
         </div>
         <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4 text-sm text-slate-700">
-          <div className="flex gap-3"><FileText className="mt-0.5 h-5 w-5 shrink-0 text-blue-700"/><div><p className="font-black">Privacidad de QuickBite</p><p className="mt-1 text-xs leading-5">Usaremos los datos necesarios para la cuenta, portal familiar, seguridad y atención de solicitudes. Versión de aviso: ${PRIVACY_VERSION}.</p></div></div>
+          <div className="flex gap-3"><FileText className="mt-0.5 h-5 w-5 shrink-0 text-blue-700"/><div><p className="font-black">Privacidad de QuickBite</p><p className="mt-1 text-xs leading-5">Usaremos los datos necesarios para la cuenta, portal familiar, seguridad y atención de solicitudes. Versión de aviso: {PRIVACY_VERSION}.</p></div></div>
           <label className="mt-4 flex items-start gap-3"><input type="checkbox" checked={privacyConsent} onChange={e=>setPrivacyConsent(e.target.checked)} className="mt-1 h-4 w-4"/><span className="text-xs leading-5">Acepto el aviso de privacidad de QuickBite y autorizo el tratamiento de mis datos para las finalidades informadas.</span></label>
         </div>
         {error&&<p className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-700">{error}</p>}
