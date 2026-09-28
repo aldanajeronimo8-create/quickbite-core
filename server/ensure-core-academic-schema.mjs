@@ -1,5 +1,3 @@
-import { createHash } from 'node:crypto';
-
 const ADVISORY_LOCK_KEY = 20260927023;
 
 const CORE_ACADEMIC_MIGRATIONS = [
