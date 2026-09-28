@@ -13,7 +13,7 @@ export function PrivacyPage() {
           <p>El responsable institucional del tratamiento es el Colegio Bilingüe Maximino Poitiers. Dirección: Calle 152 A No. 102-51, Suba, Bogotá D.C. Correo para consultas sobre datos personales: <a href="mailto:maximinopoitiers@yahoo.es">maximinopoitiers@yahoo.es</a>.</p>
 
           <h2>2. Datos que puede tratar QuickBite</h2>
-          <p>Para operar el servicio se podrán tratar datos de identificación y contacto necesarios para la cuenta, información de perfil, información de pedidos, estado de pedidos, preferencias de la aplicación y datos técnicos estrictamente necesarios para seguridad y funcionamiento. QuickBite no solicita datos sensibles para la operación normal de la cafetería.</p>
+          <p>Para operar el servicio se podrán tratar datos de identificación y contacto necesarios para la cuenta, incluido el documento de identidad cuando sea necesario para identificar al estudiante dentro del colegio; información de perfil, curso o grupo, información de pedidos, estado de pedidos, preferencias de la aplicación y datos técnicos estrictamente necesarios para seguridad y funcionamiento. El número de documento se mantiene restringido y no se muestra públicamente. QuickBite no solicita datos sensibles para la operación normal de la cafetería.</p>
 
           <h2>3. Finalidades</h2>
           <p>Las finalidades son gestionar el acceso, mostrar el menú, recibir y consultar pedidos, permitir la gestión familiar autorizada, enviar avisos relacionados con el servicio, mantener la seguridad, atender solicitudes de los titulares y cumplir obligaciones legales o institucionales aplicables.</p>
@@ -33,8 +33,9 @@ export function PrivacyPage() {
           <h2>8. Seguridad</h2>
           <p>QuickBite debe aplicar medidas técnicas y administrativas razonables para evitar acceso no autorizado, pérdida, alteración o divulgación. Las contraseñas se procesan mediante funciones de derivación criptográfica y los accesos internos se controlan por rol.</p>
 
-          <h2>9. Servicios de Google</h2>
-          <p>Cuando una función de QuickBite requiera datos de una cuenta de Google, se solicitarán únicamente los permisos necesarios para esa función, se informará su finalidad antes de la autorización y se aplicarán los requisitos de uso limitado, seguridad, transparencia y eliminación de datos exigidos por Google. No se solicitarán permisos de Google que no sean necesarios para la función.</p>
+          <h2>9. Acceso con Google</h2>
+          <p>QuickBite puede permitir el acceso mediante Google. Para la autenticación se utilizan únicamente los datos básicos autorizados por OpenID Connect: identificador estable de Google (sub), correo electrónico verificado y datos básicos de perfil que Google entregue, como nombre. QuickBite no necesita acceso a Gmail, Drive, Fotos, Contactos ni otros servicios de Google para iniciar sesión. Después de la autenticación, QuickBite puede solicitar los datos escolares que Google no proporciona y que son necesarios para la operación institucional, como documento de identidad y, para estudiantes, curso o grupo.</p>
+          <p>El identificador de cuenta de Google se guarda como referencia de federación; el correo electrónico no se utiliza como identificador técnico permanente de la cuenta de Google. Los permisos y usos de datos de Google se limitan a la finalidad informada y a los requisitos aplicables de Google.</p>
 
           <h2>10. Cambios y contacto</h2>
           <p>Esta política podrá actualizarse cuando cambien las funcionalidades, los proveedores o las obligaciones aplicables. Las versiones vigentes deberán mantenerse publicadas y accesibles.</p>
