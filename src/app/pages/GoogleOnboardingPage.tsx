@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { GraduationCap, Loader2, Users, FileText, School } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/button';
-import { quickbiteApi, type ApiUser } from '../../services/api/quickbiteApi';
+import { quickbiteApi } from '../../services/api/quickbiteApi';
 import { useAuthStore } from '../../store/authStore';
 import { toast } from 'sonner';
 
@@ -83,7 +83,7 @@ export function GoogleOnboardingPage() {
         grade_id: session.user.gradeId ?? null,
         course_id: session.user.courseId ?? null,
         created_at: new Date().toISOString(),
-      } satisfies ApiUser extends never ? never : any);
+      });
       toast.success('Cuenta QuickBite configurada.');
       navigate(destination(role), { replace: true });
     } catch (error) {
