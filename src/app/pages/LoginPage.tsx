@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Eye, EyeOff, GraduationCap, Loader2, Lock, Mail, Users, Store, ShieldCheck } from 'lucide-react';
+import { Eye, EyeOff, GraduationCap, Loader2, Lock, Mail,  } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
