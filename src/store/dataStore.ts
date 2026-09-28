@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Category, Order, Product, Profile } from '../lib/supabase';
+import type { Category, Order, Product, Profile } from '../types/domain';
 import { writeAuditLog } from '../lib/auditLog';
 import { quickbiteApi, type ApiOrder, type MenuItem } from '../services/api/quickbiteApi';
 
