@@ -10,7 +10,7 @@ export function PrivacyPage() {
 
         <section className="prose prose-slate mt-8 max-w-none">
           <h2>1. Responsable</h2>
-          <p>El responsable institucional del tratamiento es el Colegio Bilingüe Maximino Poitiers. Dirección: Calle 152 A No. 102-51, Suba, Bogotá D.C. Correo para consultas sobre datos personales: <a href="mailto:maximinopoitiers@yahoo.es">maximinopoitiers@yahoo.es</a>.</p>
+          <p>El responsable indicado para este proyecto es QuickBite. Dirección: ----. Correo para consultas sobre datos personales: <a href="mailto:quickbitejgf@gmail.com">quickbitejgf@gmail.com</a>.</p>
 
           <h2>2. Datos que puede tratar QuickBite</h2>
           <p>Para operar el servicio se podrán tratar datos de identificación y contacto necesarios para la cuenta, incluido el documento de identidad cuando sea necesario para identificar al estudiante dentro del colegio; información de perfil, curso o grupo, información de pedidos, estado de pedidos, preferencias de la aplicación y datos técnicos estrictamente necesarios para seguridad y funcionamiento. El número de documento se mantiene restringido y no se muestra públicamente. QuickBite no solicita datos sensibles para la operación normal de la cafetería.</p>
