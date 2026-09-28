@@ -15,7 +15,13 @@ El frontend activo no se conecta directamente a Supabase. Todas las operaciones 
 
 ## Rutas activas
 
+- `/`
 - `/login`
+- `/privacy`
+- `/terms`
+- `/data-rights`
+- `/google/onboarding`
+- `/google/complete`
 - `/menu`
 - `/parent/family`
 - `/staff`
@@ -53,7 +59,9 @@ Los roles disponibles son:
 
 Las cuentas protegidas se validan en el servidor y no pueden ser gestionadas por sí mismas. La edición de una cuenta protegida requiere otra cuenta protegida.
 
-Las credenciales protegidas se aprovisionan mediante secretos de entorno; nunca deben almacenarse en Git.
+Las cuentas Staff/Admin son internas y su creación se limita al rol administrador. Las credenciales protegidas se aprovisionan mediante secretos de entorno; nunca deben almacenarse en Git.
+
+El acceso con Google usa `openid email profile` y, tras la autenticación, solicita únicamente los datos escolares que Google no proporciona y que son necesarios para QuickBite.
 
 ## Calidad
 
