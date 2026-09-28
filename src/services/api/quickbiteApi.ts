@@ -50,6 +50,10 @@ export class QuickBiteApi {
 }
 
 export function quickbiteApi(baseUrl = import.meta.env.VITE_API_BASE_URL) {
-  if (!baseUrl) throw new Error('VITE_API_BASE_URL is required for QuickBite Core API');
-  return new QuickBiteApi(baseUrl.replace(/\/$/, ''));
+  const productionBaseUrl = typeof window !== 'undefined' && import.meta.env.PROD
+    ? window.location.origin
+    : baseUrl;
+
+  if (!productionBaseUrl) throw new Error('VITE_API_BASE_URL is required for QuickBite Core API in local development');
+  return new QuickBiteApi(productionBaseUrl.replace(/\/$/, ''));
 }
