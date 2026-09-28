@@ -17,6 +17,8 @@ function profileFromSession(session: ApiSession): Profile {
     email: session.user.email,
     full_name: session.user.fullName,
     role: session.user.role,
+    roles: session.user.roles,
+    protected: session.user.protected,
     created_at: new Date().toISOString(),
   };
 }
@@ -28,7 +30,7 @@ interface AuthState {
   session: { token: string } | null;
   loading: boolean;
   setUser: (user: Profile | null) => void;
-  signIn: (email: string, password: string) => Promise<void>;
+  signIn: (email: string, password: string, role?: 'student' | 'parent' | 'staff' | 'admin') => Promise<void>;
   signOut: () => Promise<void>;
   signUp: (email: string, password: string, fullName: string, inviteCode: string) => Promise<void>;
   checkSession: () => Promise<void>;
@@ -40,11 +42,11 @@ export const useAuthStore = create<AuthState>((set) => ({
   loading: true,
   setUser: (user) => set({ user }),
 
-  signIn: async (email, password) => {
+  signIn: async (email, password, role) => {
     clearDelegatedStudentContext();
     const normalizedEmail = email.trim().toLowerCase();
     try {
-      const session = await api().login(normalizedEmail, password);
+      const session = await api().login(normalizedEmail, password, role);
       const profile = profileFromSession(session);
       writeAuditLog({ action: 'auth.login', actorId: profile.id, actorEmail: profile.email });
       set({ user: profile, session: { token: session.accessToken }, loading: false });
@@ -76,6 +78,8 @@ export const useAuthStore = create<AuthState>((set) => ({
         email: user.email,
         full_name: user.fullName,
         role: user.role,
+        roles: user.roles,
+        protected: user.protected,
         created_at: new Date().toISOString(),
       } satisfies Profile;
       set({ user: profile, session: { token: client.getSession()!.accessToken }, loading: false });
