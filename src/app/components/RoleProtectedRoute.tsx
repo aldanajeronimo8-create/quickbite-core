@@ -3,15 +3,16 @@ import { Navigate } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { useStudentContextStore } from '../../store/studentContextStore';
-import { canAccessAdmin, canAccessParent, canAccessStudent, type UserRole } from '../../lib/access';
+import { canAccessAdmin, canAccessParent, canAccessStaff, canAccessStudent, type UserRole } from '../../lib/access';
 import { QuickBiteLogo } from './brand/QuickBiteLogo';
 import { isVisualPreviewMode } from '../contexts/VisualThemeProvider';
 
-interface RoleProtectedRouteProps { role: Exclude<UserRole, 'both'>; children: ReactNode; }
+interface RoleProtectedRouteProps { role: 'admin' | 'student' | 'parent' | 'staff'; children: ReactNode; }
 
 function canAccess(role: UserRole, required: RoleProtectedRouteProps['role']) {
   if (required === 'admin') return canAccessAdmin(role);
   if (required === 'parent') return canAccessParent(role);
+  if (required === 'staff') return canAccessStaff(role);
   return canAccessStudent(role);
 }
 
@@ -36,7 +37,7 @@ export function RoleProtectedRoute({ role, children }: RoleProtectedRouteProps) 
   const actingAsLinkedStudent = role === 'student' && canAccessParent(user.role) && Boolean(activeStudent);
   const adminStudentPreview = role === 'student' && canAccessAdmin(user.role) && isAdminStudentPreview();
   if (!canAccess(user.role, role) && !actingAsLinkedStudent && !adminStudentPreview) {
-    const destination = canAccessAdmin(user.role) ? '/admin' : canAccessParent(user.role) ? '/parent/family' : canAccessStudent(user.role) ? '/menu' : '/login';
+    const destination = canAccessAdmin(user.role) ? '/admin' : canAccessParent(user.role) ? '/parent/family' : canAccessStudent(user.role) ? '/menu' : canAccessStaff(user.role) ? '/staff' : '/login';
     return <Navigate to={destination} replace />;
   }
   return <>{children}</>;
