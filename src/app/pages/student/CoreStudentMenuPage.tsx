@@ -60,7 +60,7 @@ export function CoreStudentMenuPage() {
     <main className="min-h-screen bg-[var(--qb-bg,#f6f8fc)] text-[var(--qb-text,#172033)]">
       <header className="border-b bg-[var(--qb-surface,#fff)] px-4 py-4 shadow-sm sm:px-6 lg:px-10">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4">
-          <div><p className="text-xs font-black uppercase tracking-[.18em] text-[var(--qb-primary,#1747B8)]">QuickBite</p><h1 className="text-2xl font-black">Portal estudiante</h1><p className="text-sm opacity-70">{user?.full_name}{user?.grade ? ` · ${user.grade}` : ''}</p></div>
+          <div><p className="text-xs font-black uppercase tracking-[.18em] text-[var(--qb-primary,#1747B8)]">QuickBite</p><h1 className="text-2xl font-black">Portal estudiante</h1><p className="text-sm opacity-70">{user?.full_name}{user?.course ? ` · ${user.course}` : ''}</p></div>
           <button type="button" onClick={() => void signOut()} className="inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-bold"><LogOut className="h-4 w-4" />Salir</button>
         </div>
       </header>
