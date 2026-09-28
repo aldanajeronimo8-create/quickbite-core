@@ -14,6 +14,7 @@ import { StaffOrdersPage } from './pages/staff/StaffOrdersPage';
 import { CoreAdminPage } from './pages/admin/CoreAdminPage';
 import { CoreAdminUsersPage } from './pages/admin/CoreAdminUsersPage';
 import { CoreAdminRecessSchedulesPage } from './pages/admin/CoreAdminRecessSchedulesPage';
+import { CoreAdminAcademicPage } from './pages/admin/CoreAdminAcademicPage';
 
 const router = createBrowserRouter([
   { path: '/', element: <PublicHomePage /> },
@@ -30,6 +31,7 @@ const router = createBrowserRouter([
   { path: '/admin', element: <RoleProtectedRoute role="admin"><CoreAdminPage /></RoleProtectedRoute> },
   { path: '/admin/users', element: <RoleProtectedRoute role="admin"><CoreAdminUsersPage /></RoleProtectedRoute> },
   { path: '/admin/recess', element: <RoleProtectedRoute role="admin"><CoreAdminRecessSchedulesPage /></RoleProtectedRoute> },
+  { path: '/admin/academic', element: <RoleProtectedRoute role="admin"><CoreAdminAcademicPage /></RoleProtectedRoute> },
   { path: '*', element: <LoginPage /> },
 ]);
 
