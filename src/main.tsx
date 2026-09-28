@@ -8,7 +8,7 @@ import { startThemeAudit } from './lib/themeAuditBootstrap';
 // theme. This prevents the operating system from forcing a dark login before
 // VisualThemeProvider restores the authenticated account preference.
 if (typeof document !== 'undefined') {
-  const storedTheme = window.localStorage.getItem('quickbite_last_theme_preference_v2');
+  const storedTheme = window.localStorage.getItem('quickbite_theme_last_preference_v2');
   const initialTheme = storedTheme === 'dark' || storedTheme === 'light'
     ? storedTheme
     : 'light';
