@@ -1,5 +1,6 @@
 import { createBrowserRouter } from 'react-router-dom';
 import { LoginPage } from './pages/LoginPage';
+import { ParentRegisterPage } from './pages/ParentRegisterPage';
 import { PublicHomePage } from './pages/PublicHomePage';
 import { PrivacyPage } from './pages/PrivacyPage';
 import { DataRightsPage } from './pages/DataRightsPage';
@@ -19,6 +20,7 @@ import { CoreAdminAcademicPage } from './pages/admin/CoreAdminAcademicPage';
 const router = createBrowserRouter([
   { path: '/', element: <PublicHomePage /> },
   { path: '/login', element: <LoginPage /> },
+  { path: '/register-parent', element: <ParentRegisterPage /> },
   { path: '/privacy', element: <PrivacyPage /> },
   { path: '/data-rights', element: <DataRightsPage /> },
   { path: '/terms', element: <TermsPage /> },
