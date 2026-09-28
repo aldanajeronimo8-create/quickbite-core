@@ -48,6 +48,8 @@ export class QuickBiteApi {
   preferences() { return this.request<{ preferences: { theme: 'light' | 'dark' | 'system' } }>('/v1/preferences'); }
   updatePreferences(theme: 'light' | 'dark' | 'system') { return this.request<{ preferences: { theme: 'light' | 'dark' | 'system' } }>('/v1/preferences', { method: 'PUT', body: JSON.stringify({ theme }) }); }
   adminUsers() { return this.request<{ items: Array<ApiUser & { active: boolean; created_at: string; updated_at: string }> }>('/v1/admin/users'); }
+  updateOrderStatus(orderId: string, status: 'pending' | 'preparing' | 'ready' | 'delivered' | 'cancelled') { return this.request<{ order: ApiOrder }>('/v1/orders/' + orderId, { method: 'PATCH', body: JSON.stringify({ status }) }); }
+  familyChildren() { return this.request<{ items: Array<{ id: string; email: string; full_name: string; status: string; created_at: string }> }>('/v1/family/children'); }
   updateAdminUser(input: { id: string; email: string; fullName: string; role?: ApiRole; password?: string }) { return this.request<{ user: ApiUser }>('/v1/admin/users/' + input.id, { method: 'PATCH', body: JSON.stringify(input) }); }
   updateProtectedCredentials(input: { id: string; email: string; password?: string }) { return this.request<{ user: { id: string; email: string } }>('/v1/admin/users/' + input.id + '/protected-credentials', { method: 'POST', body: JSON.stringify(input) }); }
   createOrder(items: Array<{ productId: string; quantity: number }>, paymentMethod: string, idempotencyKey: string) {
