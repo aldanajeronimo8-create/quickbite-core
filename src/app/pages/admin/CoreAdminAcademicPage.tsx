@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ArrowLeft, CheckCircle2, Edit3, GraduationCap, LogOut, Plus, Power, RefreshCw, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { quickbiteApi } from '../../../services/api/quickbiteApi';
@@ -17,13 +17,13 @@ const roleError=(message:string)=>({
 export function CoreAdminAcademicPage(){
  const signOut=useAuthStore(s=>s.signOut);
  const [sections,setSections]=useState<Section[]>([]); const [grades,setGrades]=useState<Grade[]>([]); const [courses,setCourses]=useState<Course[]>([]); const [loading,setLoading]=useState(true); const [saving,setSaving]=useState(false);
- const [level,setLevel]=useState<Level>('section'); const [editing,setEditing]=useState<{id:string;level:Level;name:string;displayOrder:number;active:boolean;parentId:string}>({id:'',level:'section',name:'',displayOrder:1,active:true,parentId:''}); const [showEditor,setShowEditor]=useState(false);
+ const [editing,setEditing]=useState<{id:string;level:Level;name:string;displayOrder:number;active:boolean;parentId:string}>({id:'',level:'section',name:'',displayOrder:1,active:true,parentId:''}); const [showEditor,setShowEditor]=useState(false);
 
  const load=async()=>{setLoading(true);try{const data=await quickbiteApi().adminAcademicStructure();setSections(data.sections);setGrades(data.grades);setCourses(data.courses);}catch(e){toast.error(e instanceof Error?e.message:'No se pudo cargar la estructura académica.');}finally{setLoading(false);}};
  useEffect(()=>{void load();},[]);
 
 
- const openNew=(target:Level,parentId='')=>{setLevel(target);setEditing({id:'',level:target,name:'',displayOrder:1,active:true,parentId});setShowEditor(true);};
+ const openNew=(target:Level,parentId='')=>{setEditing({id:'',level:target,name:'',displayOrder:1,active:true,parentId});setShowEditor(true);};
  const openEdit=(item:Section|Grade|Course,target:Level,parentId='')=>{setLevel(target);setEditing({id:item.id,level:target,name:item.name,displayOrder:item.display_order,active:item.active,parentId});setShowEditor(true);};
 
  const save=async()=>{if(!editing.name.trim()||saving)return;setSaving(true);try{
