@@ -1,5 +1,6 @@
 export type AuditAction =
   | 'auth.login'
+  | 'auth.login.google'
   | 'auth.logout'
   | 'auth.signup'
   | 'auth.error'
