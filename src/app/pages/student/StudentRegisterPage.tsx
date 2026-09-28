@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, CreditCard, Eye, EyeOff, FileText, GraduationCap, Lock, ShieldCheck, User } from 'lucide-react';
+import { ArrowLeft, CreditCard, Eye, EyeOff, GraduationCap, Lock, ShieldCheck, User } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Button } from '../../components/ui/button';
