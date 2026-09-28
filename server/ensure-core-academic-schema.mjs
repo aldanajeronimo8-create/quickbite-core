@@ -17,6 +17,8 @@ const CORE_STUDENT_REGISTRATION_MIGRATION = `CREATE TABLE IF NOT EXISTS quickbit
   updated_at timestamptz NOT NULL DEFAULT now()
 );`;
 
+const CORE_FIREBASE_AUTH_MIGRATION = "ALTER TABLE quickbite.user_identity\n  ADD COLUMN IF NOT EXISTS firebase_subject text,\n  ADD COLUMN IF NOT EXISTS firebase_email text,\n  ADD COLUMN IF NOT EXISTS firebase_linked_at timestamptz;\n\nCREATE UNIQUE INDEX IF NOT EXISTS uq_quickbite_user_identity_firebase_subject\n  ON quickbite.user_identity (firebase_subject)\n  WHERE firebase_subject IS NOT NULL;\n\nCREATE INDEX IF NOT EXISTS idx_quickbite_user_identity_firebase_email\n  ON quickbite.user_identity (firebase_email)\n  WHERE firebase_email IS NOT NULL;\n";
+
 const CORE_ACADEMIC_MIGRATIONS = [
   `CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
@@ -219,7 +221,14 @@ export async function ensureCoreAcademicSchema(pool) {
       to_regclass('quickbite.student_enrollments') AS student_enrollments,
       to_regclass('quickbite.student_registration_consents') AS student_registration_consents,
       to_regclass('quickbite.recess_schedules') AS recess_schedules,
-      to_regclass('quickbite.recess_schedule_targets') AS recess_schedule_targets
+      to_regclass('quickbite.recess_schedule_targets') AS recess_schedule_targets,
+      (
+        SELECT count(*) = 3
+        FROM information_schema.columns
+        WHERE table_schema='quickbite'
+          AND table_name='user_identity'
+          AND column_name IN ('firebase_subject','firebase_email','firebase_linked_at')
+      ) AS firebase_identity_columns
   `);
   const row = probe.rows[0];
 
@@ -254,6 +263,7 @@ export async function ensureCoreAcademicSchema(pool) {
 
   const schemaReady =
     Object.values(row).every(Boolean) &&
+    row.firebase_identity_columns === true &&
     activeColumns.rowCount === 3;
 
   if (schemaReady) return;
@@ -269,7 +279,14 @@ export async function ensureCoreAcademicSchema(pool) {
         to_regclass('quickbite.student_enrollments') AS student_enrollments,
         to_regclass('quickbite.student_registration_consents') AS student_registration_consents,
         to_regclass('quickbite.recess_schedules') AS recess_schedules,
-        to_regclass('quickbite.recess_schedule_targets') AS recess_schedule_targets
+        to_regclass('quickbite.recess_schedule_targets') AS recess_schedule_targets,
+      (
+        SELECT count(*) = 3
+        FROM information_schema.columns
+        WHERE table_schema='quickbite'
+          AND table_name='user_identity'
+          AND column_name IN ('firebase_subject','firebase_email','firebase_linked_at')
+      ) AS firebase_identity_columns
     `);
     const recheckColumns = await client.query(`
       SELECT table_name
@@ -281,6 +298,7 @@ export async function ensureCoreAcademicSchema(pool) {
     const recheckRow = recheck.rows[0];
     const recheckReady =
       Object.values(recheckRow).every(Boolean) &&
+      recheckRow.firebase_identity_columns === true &&
       recheckColumns.rowCount === 3;
     if (recheckReady) return;
 
@@ -288,6 +306,7 @@ export async function ensureCoreAcademicSchema(pool) {
     try {
       await client.query(CORE_ROLE_MIGRATION);
       await client.query(CORE_IDENTITY_MIGRATION);
+      await client.query(CORE_FIREBASE_AUTH_MIGRATION);
       await client.query(CORE_STUDENT_REGISTRATION_MIGRATION);
       for (const sql of CORE_ACADEMIC_MIGRATIONS) await client.query(sql);
       await client.query('COMMIT');
