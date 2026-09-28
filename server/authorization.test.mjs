@@ -8,16 +8,16 @@ describe('QuickBite Core role authorization', () => {
     expect(isUserRole('student_parent')).toBe(false);
   });
 
-  it('keeps order creation restricted to students', () => {
+  it('allows students and parents to create orders', () => {
     expect(canCreateOrders('student')).toBe(true);
-    expect(canCreateOrders('parent')).toBe(false);
+    expect(canCreateOrders('parent')).toBe(true);
     expect(canCreateOrders('staff')).toBe(false);
     expect(canCreateOrders('admin')).toBe(false);
   });
 
-  it('allows order visibility only to student, staff, and admin', () => {
+  it('allows all supported roles to read orders, with resource filtering enforced separately', () => {
     expect(canReadOrders('student')).toBe(true);
-    expect(canReadOrders('parent')).toBe(false);
+    expect(canReadOrders('parent')).toBe(true);
     expect(canReadOrders('staff')).toBe(true);
     expect(canReadOrders('admin')).toBe(true);
   });
