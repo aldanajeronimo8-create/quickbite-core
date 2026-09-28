@@ -25,20 +25,18 @@ await client.connect();
 
 try {
   await client.query('BEGIN');
-  await client.query("ALTER TABLE quickbite.users ADD COLUMN IF NOT EXISTS roles quickbite.user_role[]");
-  await client.query("ALTER TABLE quickbite.users ADD COLUMN IF NOT EXISTS protected boolean NOT NULL DEFAULT false");
   for (const [email, fullName] of protectedAccounts) {
     const existing = await client.query('SELECT id FROM quickbite.users WHERE email=$1 FOR UPDATE', [email]);
     let userId = existing.rows[0]?.id;
     if (userId) {
       await client.query(
-        "UPDATE quickbite.users SET password_hash=$2, role='admin', roles=ARRAY['student','parent','staff','admin']::quickbite.user_role[], protected=true, active=true, updated_at=now() WHERE id=$1",
+        "UPDATE quickbite.users SET password_hash=$2, role='admin', active=true, updated_at=now() WHERE id=$1",
         [userId, passwordHash(password)],
       );
       await client.query('UPDATE quickbite.profiles SET full_name=$2 WHERE user_id=$1', [userId, fullName]);
     } else {
       const created = await client.query(
-        "INSERT INTO quickbite.users(email,password_hash,role,roles,protected,active) VALUES($1,$2,'admin',ARRAY['student','parent','staff','admin']::quickbite.user_role[],true,true) RETURNING id",
+        "INSERT INTO quickbite.users(email,password_hash,role,active) VALUES($1,$2,'admin',true) RETURNING id",
         [email, passwordHash(password)],
       );
       userId = created.rows[0].id;
