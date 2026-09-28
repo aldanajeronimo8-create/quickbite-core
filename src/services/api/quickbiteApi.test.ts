@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { QuickBiteApi } from './quickbiteApi';
 
-const session = { accessToken: 'access-1', refreshToken: 'refresh-1', expiresIn: 1800, user: { id: 'u1', email: 'student@example.test', role: 'student' as const, roles: ['student'] as const, protected: false, fullName: 'Student' } };
+const session = { accessToken: 'access-1', refreshToken: 'refresh-1', expiresIn: 1800, user: { id: 'u1', email: 'student@example.test', role: 'student' as const, roles: ['student'], protected: false, fullName: 'Student' } };
 
 describe('QuickBiteApi', () => {
   it('rotates the session once after an authenticated request receives 401', async () => {
