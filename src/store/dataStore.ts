@@ -1,21 +1,7 @@
 import { create } from 'zustand';
-import { requireSupabaseClient, type Category, type Order, type Product, type Profile } from '../lib/supabase';
+import type { Category, Order, Product, Profile } from '../types/domain';
 import { writeAuditLog } from '../lib/auditLog';
-import { appConfig } from '../config/appConfig';
-import * as repo from '../repositories/quickbiteRepository';
-import { createAdminManagedUser, updateAdminManagedUser, updateProtectedAdminCredentials as updateProtectedAdminCredentialsViaApi } from '../services/adminUserService';
-
-const REALTIME_TABLES = [
-  'profiles',
-  'categories',
-  'products',
-  'orders',
-  'order_items',
-  'notifications',
-  'loyalty_settings',
-  'loyalty_rewards',
-  'loyalty_redemptions',
-] as const;
+import { quickbiteApi, type ApiOrder, type MenuItem } from '../services/api/quickbiteApi';
 
 export interface HistoryEntry {
   id: string;
@@ -35,18 +21,18 @@ interface DataState {
   history: HistoryEntry[];
   loading: boolean;
   loadData: (options?: { silent?: boolean }) => Promise<void>;
-  addProduct: (product: repo.NewProduct) => Promise<void>;
-  updateProduct: (id: string, updates: repo.ProductUpdate) => Promise<void>;
+  addProduct: (product: any) => Promise<void>;
+  updateProduct: (id: string, updates: any) => Promise<void>;
   deleteProduct: (id: string) => Promise<void>;
-  addOrder: (orderData: repo.NewOrder) => Promise<string>;
+  addOrder: (orderData: any) => Promise<string>;
   updateOrder: (id: string, updates: Partial<Order>) => Promise<void>;
   moderateOrderPayment: (id: string, action: 'approve' | 'reject') => Promise<void>;
   archiveOrders: (ids: string[]) => Promise<number>;
   resetOrdersForNewPeriod: () => Promise<number>;
   deleteOrder: (id: string) => Promise<void>;
-  addUser: (user: repo.NewManagedUser) => Promise<void>;
-  updateUser: (user: repo.ManagedUserUpdate) => Promise<void>;
-  updateProtectedCredentials: (user: repo.ProtectedCredentialsUpdate) => Promise<void>;
+  addUser: (user: any) => Promise<void>;
+  updateUser: (user: any) => Promise<void>;
+  updateProtectedCredentials: (user: any) => Promise<void>;
   deleteUser: (id: string) => Promise<void>;
   getProductsByCategory: (categoryId?: string) => Product[];
   getOrdersByUser: (userId: string) => Order[];
@@ -54,20 +40,38 @@ interface DataState {
   clearHistory: () => void;
 }
 
-async function remoteAudit(entry: Parameters<typeof writeAuditLog>[0]) {
-  const localAudit = writeAuditLog(entry);
-  try {
-    await repo.writeAudit({
-      action: entry.action,
-      actor_id: entry.actorId,
-      actor_email: entry.actorEmail,
-      entity: entry.entity,
-      entity_id: entry.entityId,
-      metadata: localAudit.metadata,
-    });
-  } catch {
-    writeAuditLog({ action: 'app.error', metadata: { source: 'remote_audit' } });
-  }
+const unsupported = (feature: string): never => {
+  throw new Error(`${feature} todavía no está expuesto por QuickBite Core API.`);
+};
+
+function mapMenuItem(item: MenuItem): Product {
+  return {
+    id: item.id,
+    name: item.name,
+    description: item.description ?? '',
+    price: Number(item.price),
+    category_id: item.category_id ?? '',
+    stock: Number(item.stock),
+    available: item.stock > 0,
+    created_at: new Date().toISOString(),
+    category: item.category_id && item.category_name
+      ? { id: item.category_id, name: item.category_name, created_at: new Date().toISOString() }
+      : undefined,
+  };
+}
+
+function mapOrder(item: ApiOrder): Order {
+  return {
+    id: item.id,
+    user_id: item.user_id,
+    total: Number(item.total),
+    status: item.status as Order['status'],
+    payment_method: item.payment_method as Order['payment_method'],
+    payment_status: item.payment_status as Order['payment_status'],
+    order_number: item.pickup_code,
+    pickup_code: item.pickup_code,
+    created_at: item.created_at,
+  };
 }
 
 export const useDataStore = create<DataState>((set, get) => ({
@@ -81,271 +85,64 @@ export const useDataStore = create<DataState>((set, get) => ({
   loadData: async (options) => {
     if (!options?.silent) set({ loading: true });
     try {
-      const isAdminContext = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin');
-      const client = requireSupabaseClient();
-      const { data: sessionData } = await client.auth.getSession();
-      const isAuthenticated = Boolean(sessionData.session?.user);
+      const { items } = await quickbiteApi().menu();
+      const products = items.map(mapMenuItem);
+      const categories = Array.from(
+        new Map(items.filter((item) => item.category_id).map((item) => [
+          item.category_id!,
+          { id: item.category_id!, name: item.category_name ?? 'Sin categoría', created_at: new Date().toISOString() },
+        ])).values(),
+      ) as Category[];
 
-      const [categories, products] = await Promise.all([
-        repo.listCategories(),
-        repo.listProducts(),
-      ]);
-
-      let allOrders: Order[] = [];
-      if (isAuthenticated) {
-        try {
-          allOrders = await repo.listOrders();
-        } catch (error) {
-          writeAuditLog({
-            action: 'app.error',
-            metadata: { source: 'data_load.orders', message: String(error) },
-          });
-        }
-      }
-
-      let users: Profile[] = [];
-      if (isAdminContext && isAuthenticated) {
-        try {
-          users = await repo.listProfiles();
-        } catch (error) {
-          writeAuditLog({
-            action: 'app.error',
-            metadata: { source: 'data_load.profiles', message: String(error) },
-          });
-        }
-      }
-
-      const orders = isAdminContext
-        ? allOrders
-        : allOrders;
-
-      set({ categories, products, orders, users });
+      let orders: Order[] = [];
+      try { orders = (await quickbiteApi().orders()).items.map(mapOrder); } catch { orders = []; }
+      set({ categories, products, orders });
     } finally {
       if (!options?.silent) set({ loading: false });
     }
   },
 
-  addProduct: async (productData) => {
-    const product = await repo.createProduct(productData);
-    await remoteAudit({
-      action: 'product.create',
-      entity: 'product',
-      entityId: product.id,
-      metadata: { name: product.name },
-    });
-    set({ products: [product, ...get().products] });
-  },
-
-  updateProduct: async (id, updates) => {
-    const product = await repo.updateProduct(id, updates);
-    await remoteAudit({
-      action: 'product.update',
-      entity: 'product',
-      entityId: id,
-      metadata: updates as Record<string, unknown>,
-    });
-    set({ products: get().products.map((item) => (item.id === id ? product : item)) });
-  },
-
-  deleteProduct: async (id) => {
-    await repo.deleteProduct(id);
-    await remoteAudit({ action: 'product.delete', entity: 'product', entityId: id });
-    set({ products: get().products.filter((product) => product.id !== id) });
-  },
+  addProduct: async () => unsupported('La creación de productos'),
+  updateProduct: async () => unsupported('La edición de productos'),
+  deleteProduct: async () => unsupported('La eliminación de productos'),
 
   addOrder: async (orderData) => {
-    // The order transaction is the only operation on the critical path.
-    // Audit and data refresh are intentionally detached so the buyer sees
-    // confirmation as soon as the atomic database write succeeds.
-    const orderNumber = await repo.createOrder(orderData);
-
-    void remoteAudit({
+    const items = (orderData.order_items ?? []).map((item: any) => ({
+      productId: item.product_id,
+      quantity: Number(item.quantity),
+    }));
+    const idempotencyKey = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
+    const result = await quickbiteApi().createOrder(items, orderData.payment_method, idempotencyKey);
+    const order = mapOrder(result.order);
+    set({ orders: [order, ...get().orders] });
+    void writeAuditLog({
       action: 'order.create',
-      actorId: orderData.user_id,
+      actorId: order.user_id ?? undefined,
       entity: 'order',
-      metadata: { payment_method: orderData.payment_method },
+      entityId: order.id,
+      metadata: { payment_method: order.payment_method },
     });
-
-    void get().loadData({ silent: true }).catch((error) => {
-      writeAuditLog({
-        action: 'app.error',
-        metadata: { source: 'post_order_refresh', message: String(error) },
-      });
-    });
-
-    return orderNumber;
+    return order.order_number;
   },
 
-  updateOrder: async (id, updates) => {
-    const order = updates.status && Object.keys(updates).length === 1
-      ? await repo.updateOrderStatus(id, updates.status)
-      : await repo.updateOrder(id, updates);
-    await remoteAudit({
-      action: updates.payment_status ? 'payment.update' : updates.status ? 'order.status_change' : 'order.update',
-      entity: 'order',
-      entityId: id,
-      metadata: updates as Record<string, unknown>,
-    });
-    set({ orders: get().orders.map((item) => (item.id === id ? order : item)) });
-  },
-
-  moderateOrderPayment: async (id, action) => {
-    const order = await repo.moderateOrderPayment(id, action);
-    await remoteAudit({
-      action: 'payment.update',
-      entity: 'order',
-      entityId: id,
-      metadata: { action, payment_status: order.payment_status, status: order.status },
-    });
-
-    if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/admin') && action === 'approve') {
-      set({ orders: [...get().orders.filter((item) => item.id !== id), order] });
-    } else {
-      set({ orders: get().orders.map((item) => (item.id === id ? order : item)) });
-    }
-  },
-
-  archiveOrders: async (ids) => {
-    if (!ids.length) return 0;
-    const archivedCount = await repo.archiveOrders(ids);
-    if (!archivedCount) return 0;
-
-    const archivedIds = new Set(ids);
-    await remoteAudit({
-      action: 'order.update',
-      entity: 'order',
-      metadata: { action: 'period_closed', archived_orders: archivedCount },
-    });
-    set({
-      orders: get().orders.filter((order) => !archivedIds.has(order.id)),
-    });
-    return archivedCount;
-  },
-
-  resetOrdersForNewPeriod: async () => {
-    const resetCount = await repo.resetOrdersForNewPeriod();
-    await remoteAudit({
-      action: 'order.update',
-      entity: 'order',
-      metadata: {
-        action: 'full_operational_reset',
-        orders_reset: resetCount,
-        sales_reset: true,
-        stock_restored: true,
-        loyalty_reset: true,
-        wallet_reset: true,
-        notifications_reset: true,
-        reports_and_analytics_reset: true,
-      },
-    });
-    set({ orders: [] });
-    return resetCount;
-  },
-
-  deleteOrder: async (id) => {
-    await repo.deleteOrder(id);
-    await remoteAudit({ action: 'order.update', entity: 'order', entityId: id, metadata: { deleted: true } });
-    set({ orders: get().orders.filter((order) => order.id !== id) });
-  },
-
-  addUser: async (user) => {
-    await createAdminManagedUser(user);
-    await remoteAudit({ action: 'auth.signup', actorEmail: user.email, entity: 'user', metadata: { role: user.role } });
-    await get().loadData({ silent: true });
-  },
-
-  updateUser: async (user) => {
-    await updateAdminManagedUser(user);
-    await remoteAudit({
-      action: 'settings.update',
-      actorEmail: user.email,
-      entity: 'user',
-      entityId: user.id,
-      metadata: { role: user.role, passwordChanged: Boolean(user.password) },
-    });
-    await get().loadData({ silent: true });
-  },
-
-  updateProtectedCredentials: async (user) => {
-    await updateProtectedAdminCredentialsViaApi(user);
-    await remoteAudit({
-      action: 'settings.update',
-      actorEmail: user.email,
-      entity: 'user',
-      entityId: user.id,
-      metadata: { protectedCredentialsChanged: true, passwordChanged: Boolean(user.password) },
-    });
-    await get().loadData({ silent: true });
-  },
-
-  deleteUser: async (id) => {
-    await repo.deleteManagedUser(id);
-    await remoteAudit({ action: 'settings.update', entity: 'user', entityId: id, metadata: { deleted: true } });
-    set({ users: get().users.filter((user) => user.id !== id) });
-  },
+  updateOrder: async () => unsupported('La actualización administrativa de pedidos'),
+  moderateOrderPayment: async () => unsupported('La moderación de pagos'),
+  archiveOrders: async () => unsupported('El archivado de pedidos'),
+  resetOrdersForNewPeriod: async () => unsupported('El reinicio de período'),
+  deleteOrder: async () => unsupported('La eliminación de pedidos'),
+  addUser: async () => unsupported('La creación de usuarios'),
+  updateUser: async () => unsupported('La edición de usuarios'),
+  updateProtectedCredentials: async () => unsupported('La gestión de credenciales protegidas'),
+  deleteUser: async () => unsupported('La eliminación de usuarios'),
 
   getProductsByCategory: (categoryId) => {
-    const { products } = get();
-    const visible = products.filter((product) => product.available && product.stock > 0);
+    const visible = get().products.filter((product) => product.available && product.stock > 0);
     return categoryId ? visible.filter((product) => product.category_id === categoryId) : visible;
   },
 
   getOrdersByUser: (userId) => get().orders.filter((order) => order.user_id === userId),
 
-  subscribeRealtime: () => {
-    const supabase = requireSupabaseClient();
-    if (!appConfig.supabaseRealtimeEnabled) return () => undefined;
-
-    let refreshTimer: ReturnType<typeof setTimeout> | undefined;
-    let refreshInterval: ReturnType<typeof setInterval> | undefined;
-    const scheduleRefresh = () => {
-      if (refreshTimer) clearTimeout(refreshTimer);
-      refreshTimer = setTimeout(() => {
-        get().loadData({ silent: true }).catch((error) => {
-          writeAuditLog({
-            action: 'app.error',
-            metadata: { source: 'realtime_refresh', message: String(error) },
-          });
-        });
-      }, 150);
-    };
-    const refreshOnFocus = () => {
-      if (document.visibilityState === 'visible') scheduleRefresh();
-    };
-
-    let channel = supabase.channel('quickbite-db-changes');
-    REALTIME_TABLES.forEach((table) => {
-      channel = channel.on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table },
-        scheduleRefresh,
-      );
-    });
-
-    channel.subscribe((status, error) => {
-      if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-        writeAuditLog({
-          action: 'app.error',
-          metadata: { source: 'realtime_subscription', status, message: error?.message },
-        });
-      }
-      if (status === 'SUBSCRIBED') scheduleRefresh();
-    });
-
-    document.addEventListener('visibilitychange', refreshOnFocus);
-    window.addEventListener('focus', scheduleRefresh);
-    if (appConfig.dataRefreshIntervalMs > 0) {
-      refreshInterval = setInterval(scheduleRefresh, appConfig.dataRefreshIntervalMs);
-    }
-
-    return () => {
-      if (refreshTimer) clearTimeout(refreshTimer);
-      if (refreshInterval) clearInterval(refreshInterval);
-      document.removeEventListener('visibilitychange', refreshOnFocus);
-      window.removeEventListener('focus', scheduleRefresh);
-      supabase.removeChannel(channel);
-    };
-  },
+  subscribeRealtime: () => () => undefined,
 
   clearHistory: () => set({ history: [] }),
 }));
