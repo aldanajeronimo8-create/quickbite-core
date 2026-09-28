@@ -4,7 +4,6 @@ import { ArrowLeft, LayoutGrid, ShieldCheck } from 'lucide-react';
 import { StudentMenuPage } from '../pages/student/StudentMenuPage';
 import { StudentMenuFavoritesOverlay } from '../components/student/StudentMenuFavoritesOverlay';
 import { useStudentContextStore } from '../../store/studentContextStore';
-import { requireSupabaseClient } from '../../lib/supabase';
 import { QuickBiteLogo } from '../components/brand/QuickBiteLogo';
 
 const ADMIN_PREVIEW_KEY = 'quickbite_admin_student_preview';
@@ -37,14 +36,8 @@ export function StudentExperienceLayout() {
   const returnToParent = async () => {
     if (!actingAsStudent || returning) return;
     setReturning(true);
-    try {
-      const { error } = await requireSupabaseClient().rpc('clear_parent_active_student');
-      if (error) throw error;
-      clearActiveStudent();
-      navigate('/parent/family');
-    } catch {
-      setReturning(false);
-    }
+    clearActiveStudent();
+    navigate('/parent/family');
   };
 
   return <div className="relative min-h-screen">
