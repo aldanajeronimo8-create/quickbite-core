@@ -13,5 +13,5 @@ export function canAccessParent(role: UserRole) {
 }
 
 export function canAccessStaff(role: UserRole) {
-  return role === 'staff' || role === 'admin';
+  return role === 'staff';
 }
