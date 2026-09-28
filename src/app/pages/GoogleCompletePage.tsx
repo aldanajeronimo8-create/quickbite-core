@@ -19,8 +19,14 @@ export function GoogleCompletePage() {
         protected: session.user.protected,
         created_at: new Date().toISOString(),
       });
-      if (session.user.role === 'student') { bindStudentUser(session.user.id); navigate('/menu', { replace: true }); }
-      else navigate('/parent/family', { replace: true });
+      if (session.user.role === 'student') {
+        bindStudentUser(session.user.id);
+        navigate('/menu', { replace: true });
+      } else if (session.user.role === 'parent') {
+        navigate('/parent/family', { replace: true });
+      } else {
+        throw new Error('google_role_not_allowed');
+      }
     }).catch(() => {
       toast.error('No se pudo completar el acceso con Google.');
       navigate('/login', { replace: true });
