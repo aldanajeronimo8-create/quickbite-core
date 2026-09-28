@@ -2,7 +2,6 @@ import type { ReactNode } from 'react';
 import { Navigate } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
-import { useStudentContextStore } from '../../store/studentContextStore';
 import { canAccessAdmin, canAccessParent, canAccessStaff, canAccessStudent, type UserRole } from '../../lib/access';
 import { QuickBiteLogo } from './brand/QuickBiteLogo';
 import { isVisualPreviewMode } from '../contexts/VisualThemeProvider';
@@ -27,17 +26,15 @@ function isAdminStudentPreview() {
 
 export function RoleProtectedRoute({ role, children }: RoleProtectedRouteProps) {
   const { user, loading } = useAuthStore();
-  const activeStudent = useStudentContextStore((state) => state.activeStudent);
   const preview = isVisualPreviewMode();
 
   if (preview) return <>{children}</>;
   if (loading) return <div className="grid min-h-screen place-items-center bg-slate-50"><div className="text-center"><QuickBiteLogo className="mx-auto mb-4 h-14 w-14 rounded-2xl" /><Loader2 className="mx-auto h-10 w-10 animate-spin text-blue-600" /><p className="mt-3 text-sm font-bold text-slate-600">Verificando sesión...</p></div></div>;
   if (!user) return <Navigate to="/login" replace />;
 
-  const actingAsLinkedStudent = role === 'student' && canAccessParent(user.role) && Boolean(activeStudent);
   const adminStudentPreview = role === 'student' && canAccessAdmin(user.role) && isAdminStudentPreview();
-  if (!canAccess(user.role, role) && !actingAsLinkedStudent && !adminStudentPreview) {
-    const destination = canAccessAdmin(user.role) ? '/admin' : canAccessParent(user.role) ? '/parent/family' : canAccessStudent(user.role) ? '/menu' : canAccessStaff(user.role) ? '/staff' : '/login';
+  if (!canAccess(user.role, role) && !adminStudentPreview) {
+    const destination = canAccessAdmin(user.role) ? '/admin' : canAccessParent(user.role) ? '/parent/family' : canAccessStaff(user.role) ? '/staff' : canAccessStudent(user.role) ? '/menu' : '/login';
     return <Navigate to={destination} replace />;
   }
   return <>{children}</>;
