@@ -257,7 +257,7 @@ export async function ensureCoreAcademicSchema(pool) {
       throw error;
     }
   } finally {
-    try { await client.query('SELECT pg_advisory_unlock($1)', [ADVISORY_LOCK_KEY]); } catch {}
+    try { await client.query('SELECT pg_advisory_unlock($1)', [ADVISORY_LOCK_KEY]); } catch { /* ignore unlock failure */ }
     client.release();
   }
 }
