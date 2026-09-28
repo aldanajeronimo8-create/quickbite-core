@@ -217,6 +217,7 @@ export async function ensureCoreAcademicSchema(pool) {
       to_regclass('quickbite.academic_grades') AS academic_grades,
       to_regclass('quickbite.academic_courses') AS academic_courses,
       to_regclass('quickbite.student_enrollments') AS student_enrollments,
+      to_regclass('quickbite.student_registration_consents') AS student_registration_consents,
       to_regclass('quickbite.recess_schedules') AS recess_schedules,
       to_regclass('quickbite.recess_schedule_targets') AS recess_schedule_targets
   `);
@@ -266,6 +267,7 @@ export async function ensureCoreAcademicSchema(pool) {
         to_regclass('quickbite.academic_grades') AS academic_grades,
         to_regclass('quickbite.academic_courses') AS academic_courses,
         to_regclass('quickbite.student_enrollments') AS student_enrollments,
+        to_regclass('quickbite.student_registration_consents') AS student_registration_consents,
         to_regclass('quickbite.recess_schedules') AS recess_schedules,
         to_regclass('quickbite.recess_schedule_targets') AS recess_schedule_targets
     `);
