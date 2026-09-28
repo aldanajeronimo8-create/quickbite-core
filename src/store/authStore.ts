@@ -31,6 +31,7 @@ interface AuthState {
   loading: boolean;
   setUser: (user: Profile | null) => void;
   signIn: (email: string, password: string, role?: 'student' | 'parent' | 'staff' | 'admin') => Promise<void>;
+  switchRole: (role: 'student' | 'parent' | 'staff' | 'admin') => Promise<void>;
   signOut: () => Promise<void>;
   signUp: (email: string, password: string, fullName: string, inviteCode: string) => Promise<void>;
   checkSession: () => Promise<void>;
@@ -52,7 +53,17 @@ export const useAuthStore = create<AuthState>((set) => ({
       set({ user: profile, session: { token: session.accessToken }, loading: false });
     } catch (error) {
       writeAuditLog({ action: 'auth.error', actorEmail: normalizedEmail, metadata: { reason: String(error) } });
-      throw new Error('Correo o contraseña incorrectos.');
+      throw error instanceof Error ? error : new Error('No se pudo iniciar sesión.');
+    }
+  },
+
+  switchRole: async (role) => {
+    try {
+      const session = await api().switchRole(role);
+      const profile = profileFromSession(session);
+      set({ user: profile, session: { token: session.accessToken }, loading: false });
+    } catch (error) {
+      throw error instanceof Error ? error : new Error('No se pudo cambiar de entorno.');
     }
   },
 
