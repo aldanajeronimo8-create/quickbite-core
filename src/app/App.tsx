@@ -38,7 +38,12 @@ function SessionRestorer() {
     const pathname = window.location.pathname;
     if (pathname !== '/' && pathname !== '/login') return;
 
-    if (canAccessAdmin(user.role)) void router.navigate('/admin', { replace: true });
+    const availableRoles = user.protected
+      ? ['student', 'parent', 'staff', 'admin']
+      : Array.from(new Set(user.roles ?? [user.role]));
+
+    if (availableRoles.length > 1) void router.navigate('/choose-role', { replace: true });
+    else if (canAccessAdmin(user.role)) void router.navigate('/admin', { replace: true });
     else if (canAccessStaff(user.role)) void router.navigate('/staff', { replace: true });
     else if (canAccessParent(user.role)) void router.navigate('/parent/family', { replace: true });
     else if (canAccessStudent(user.role)) void router.navigate('/menu', { replace: true });
