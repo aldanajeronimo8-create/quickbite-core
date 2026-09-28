@@ -35,6 +35,7 @@ export function LoginPage() {
   const [availableRoles, setAvailableRoles] = useState<Mode[]>([]);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [authenticatedUserId, setAuthenticatedUserId] = useState('');
+  const googleError = new URLSearchParams(window.location.search).has('google_error');
 
   const handleGoogle = () => { setGoogleLoading(true); const base = import.meta.env.VITE_API_BASE_URL || window.location.origin; window.location.assign(base.replace(/\/$/,'') + '/v1/auth/google/start'); };
 
