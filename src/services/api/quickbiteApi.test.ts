@@ -16,6 +16,11 @@ describe('QuickBiteApi', () => {
     expect(api.getSession()?.refreshToken).toBe('refresh-2');
   });
 
+  it('constructs with the browser fetch bound to globalThis', () => {
+    const api = new QuickBiteApi('https://api.example.test');
+    expect(api).toBeInstanceOf(QuickBiteApi);
+  });
+
   it('does not send a request with a missing API base URL', () => {
     expect(() => new QuickBiteApi('')).not.toThrow();
   });
