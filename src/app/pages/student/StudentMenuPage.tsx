@@ -95,14 +95,14 @@ export function StudentMenuPage() {
       try {
         if (!authUser) { navigate('/login', { replace: true }); return; }
         const effectiveStudentId = activeStudent?.id ?? authUser.id;
-        const { data: profile, error } = await client.from('profiles').select('id,email,full_name,role,ti').eq('id', effectiveStudentId).maybeSingle();
+        const { data: profile, error } = await requireSupabaseClient().from('profiles').select('id,email,full_name,role,ti').eq('id', effectiveStudentId).maybeSingle();
         if (error) throw error;
         if (!profile || (!activeStudent && !canAccessStudent(profile.role))) {
           if (!activeStudent) await signOut();
           navigate('/login', { replace: true });
           return;
         }
-        const { data: wallet, error: walletError } = await client.from('wallet_accounts').select('balance').eq('user_id', effectiveStudentId).maybeSingle();
+        const { data: wallet, error: walletError } = await requireSupabaseClient().from('wallet_accounts').select('balance').eq('user_id', effectiveStudentId).maybeSingle();
         if (walletError) throw walletError;
         if (active) {
           setStudent({ id: profile.id, name: profile.full_name, grade: profile.ti ?? '', email: profile.email });
