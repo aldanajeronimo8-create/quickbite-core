@@ -25,13 +25,15 @@ type FirebaseAuthModule = {
 
 const enabled = import.meta.env.VITE_FIREBASE_AUTH_ENABLED !== 'false';
 
+// Firebase Web config is public application configuration, not a password.
+// Keep env overrides for deployments, with the project's generated config as a safe fallback.
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY as string | undefined,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN as string | undefined,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID as string | undefined,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET as string | undefined,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID as string | undefined,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID as string | undefined,
+  apiKey: (import.meta.env.VITE_FIREBASE_API_KEY as string | undefined) || 'AIzaSyCsFFs8_5LGNCyQo_3tqblRZlPvysFOXwg',
+  authDomain: (import.meta.env.VITE_FIREBASE_AUTH_DOMAIN as string | undefined) || 'quickbite-daf31.firebaseapp.com',
+  projectId: (import.meta.env.VITE_FIREBASE_PROJECT_ID as string | undefined) || 'quickbite-daf31',
+  storageBucket: (import.meta.env.VITE_FIREBASE_STORAGE_BUCKET as string | undefined) || 'quickbite-daf31.firebasestorage.app',
+  messagingSenderId: (import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID as string | undefined) || '678157251455',
+  appId: (import.meta.env.VITE_FIREBASE_APP_ID as string | undefined) || '1:678157251455:web:f6803ebfe250998351604a',
 };
 
 export function isFirebaseGoogleConfigured() {
