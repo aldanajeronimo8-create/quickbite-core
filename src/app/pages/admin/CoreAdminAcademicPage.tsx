@@ -24,7 +24,7 @@ export function CoreAdminAcademicPage(){
 
 
  const openNew=(target:Level,parentId='')=>{setEditing({id:'',level:target,name:'',displayOrder:1,active:true,parentId});setShowEditor(true);};
- const openEdit=(item:Section|Grade|Course,target:Level,parentId='')=>{setLevel(target);setEditing({id:item.id,level:target,name:item.name,displayOrder:item.display_order,active:item.active,parentId});setShowEditor(true);};
+ const openEdit=(item:Section|Grade|Course,target:Level,parentId='')=>{setEditing({id:item.id,level:target,name:item.name,displayOrder:item.display_order,active:item.active,parentId});setShowEditor(true);};
 
  const save=async()=>{if(!editing.name.trim()||saving)return;setSaving(true);try{
    if(editing.level==='section'){
