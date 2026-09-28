@@ -5,6 +5,8 @@ export interface Profile {
   email: string;
   full_name: string;
   role: UserRole;
+  roles?: UserRole[];
+  protected?: boolean;
   ti?: string | null;
   created_at: string;
   grade?: string | null;
