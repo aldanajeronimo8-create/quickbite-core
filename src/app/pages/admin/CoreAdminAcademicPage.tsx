@@ -22,7 +22,6 @@ export function CoreAdminAcademicPage(){
  const load=async()=>{setLoading(true);try{const data=await quickbiteApi().adminAcademicStructure();setSections(data.sections);setGrades(data.grades);setCourses(data.courses);}catch(e){toast.error(e instanceof Error?e.message:'No se pudo cargar la estructura académica.');}finally{setLoading(false);}};
  useEffect(()=>{void load();},[]);
 
- const activeSections=sections.filter((section)=>section.active);
 
  const openNew=(target:Level,parentId='')=>{setLevel(target);setEditing({id:'',level:target,name:'',displayOrder:1,active:true,parentId});setShowEditor(true);};
  const openEdit=(item:Section|Grade|Course,target:Level,parentId='')=>{setLevel(target);setEditing({id:item.id,level:target,name:item.name,displayOrder:item.display_order,active:item.active,parentId});setShowEditor(true);};
