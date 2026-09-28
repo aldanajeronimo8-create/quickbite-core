@@ -28,8 +28,9 @@ El frontend activo no se conecta directamente a Supabase. Todas las operaciones 
 - `/staff/orders`
 - `/admin`
 - `/admin/users`
+- `/admin/recess`
 
-Las pantallas antiguas que dependían de llamadas directas a Supabase fueron retiradas del enrutador mientras se completa su migración al Core API.
+La administración de descansos fue migrada al Core API: su almacenamiento, permisos y asignaciones académicas ya no dependen de Supabase. La pantalla legacy `AdminRecessSchedules.tsx` fue eliminada.
 
 ## Desarrollo local
 
