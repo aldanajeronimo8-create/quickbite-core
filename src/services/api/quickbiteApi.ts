@@ -40,6 +40,7 @@ export class QuickBiteApi {
     return response.status === 204 ? undefined as T : await response.json() as T;
   }
   async login(email: string, password: string, role?: ApiRole) { const session = await this.request<ApiSession>('/v1/auth/login', { method: 'POST', body: JSON.stringify({ email, password, role }) }, false); this.setSession(session); return session; }
+  async switchRole(role: ApiRole) { const session = await this.request<ApiSession>('/v1/auth/role', { method: 'POST', body: JSON.stringify({ role }) }); this.setSession(session); return session; }
   async refresh() { if (!this.session) throw new Error('missing_session'); const session = await this.request<ApiSession>('/v1/auth/refresh', { method: 'POST', body: JSON.stringify({ refreshToken: this.session.refreshToken }) }, false); this.setSession(session); return session; }
   async logout() { const token = this.session?.refreshToken; this.setSession(null); if (token) await this.request<void>('/v1/auth/logout', { method: 'POST', body: JSON.stringify({ refreshToken: token }) }, false); }
   menu() { return this.request<{ items: MenuItem[] }>('/v1/menu'); }
@@ -51,6 +52,7 @@ export class QuickBiteApi {
   updateOrderStatus(orderId: string, status: 'pending' | 'preparing' | 'ready' | 'delivered' | 'cancelled') { return this.request<{ order: ApiOrder }>('/v1/orders/' + orderId, { method: 'PATCH', body: JSON.stringify({ status }) }); }
   familyChildren() { return this.request<{ items: Array<{ id: string; email: string; full_name: string; status: string; created_at: string }> }>('/v1/family/children'); }
   updateAdminUser(input: { id: string; email: string; fullName: string; role?: ApiRole; password?: string }) { return this.request<{ user: ApiUser }>('/v1/admin/users/' + input.id, { method: 'PATCH', body: JSON.stringify(input) }); }
+  createInternalUser(input: { email: string; fullName: string; role: 'staff' | 'admin'; password: string }) { return this.request<{ user: ApiUser }>('/v1/admin/users', { method: 'POST', body: JSON.stringify(input) }); }
   updateProtectedCredentials(input: { id: string; email: string; password?: string }) { return this.request<{ user: { id: string; email: string } }>('/v1/admin/users/' + input.id + '/protected-credentials', { method: 'POST', body: JSON.stringify(input) }); }
   createOrder(items: Array<{ productId: string; quantity: number }>, paymentMethod: string, idempotencyKey: string) {
     return this.request<{ order: ApiOrder }>('/v1/orders', { method: 'POST', body: JSON.stringify({ items: items.map(({ productId, quantity }) => ({ product_id: productId, quantity })), paymentMethod, idempotencyKey }) });
