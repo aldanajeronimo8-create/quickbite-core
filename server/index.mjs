@@ -15,7 +15,29 @@ const origins = new Set((process.env.ALLOWED_ORIGINS ?? 'http://localhost:5173')
 const accessTtlSeconds = 30 * 60;
 const refreshTtlDays = 31;
 const json = (response, status, body, requestId) => response.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'x-request-id': requestId }).end(JSON.stringify(body));
-const verifyPassword = (password, stored) => { const [salt, digest] = stored.split(':'); const actual = scryptSync(password, salt, 64); return timingSafeEqual(actual, Buffer.from(digest, 'hex')); };
+const verifyScryptPassword = (password, stored) => {
+  const [salt, digest] = String(stored).split(':');
+  if (!salt || !digest || !/^[0-9a-f]{128}$/i.test(digest)) return false;
+  const actual = scryptSync(String(password), salt, 64);
+  const expected = Buffer.from(digest, 'hex');
+  return actual.length === expected.length && timingSafeEqual(actual, expected);
+};
+const verifyStoredPassword = async (password, stored) => {
+  if (typeof stored !== 'string' || !stored) return false;
+  if (/^\$2[aby]\$/.test(stored)) {
+    try {
+      const { rows } = await pool.query('SELECT crypt($1,$2) = $2 AS valid', [String(password), stored]);
+      return rows[0]?.valid === true;
+    } catch {
+      return false;
+    }
+  }
+  try {
+    return verifyScryptPassword(password, stored);
+  } catch {
+    return false;
+  }
+};
 const hashToken = (value) => createHash('sha256').update(value).digest('hex');
 const sign = (payload) => { const encoded = Buffer.from(JSON.stringify(payload)).toString('base64url'); const signature = createHmac('sha256', process.env.AUTH_JWT_SECRET).update(encoded).digest('base64url'); return `${encoded}.${signature}`; };
 const verify = (token) => { const [encoded, signature] = token.split('.'); if (!encoded || !signature) throw new Error('invalid_token'); const expected = Buffer.from(createHmac('sha256', process.env.AUTH_JWT_SECRET).update(encoded).digest('base64url')); const actual = Buffer.from(signature); if (actual.length !== expected.length || !timingSafeEqual(actual, expected)) throw new Error('invalid_token'); const payload = JSON.parse(Buffer.from(encoded, 'base64url').toString()); if (payload.exp <= Math.floor(Date.now() / 1000)) throw new Error('expired_token'); return payload; };
@@ -202,7 +224,7 @@ async function route(request,response,requestId){
     throw error;
   }finally{client.release();}
  }
- if(method==='POST'&&url.pathname==='/v1/auth/login'){const {email,password,role}=await readJson(request);if(typeof email!=='string'||typeof password!=='string')return json(response,400,{error:'invalid_credentials'},requestId);const result=await pool.query('SELECT u.id,u.email,u.role,u.password_hash,p.full_name,i.document_number,i.section_id,i.grade_id,i.course_id,i.course,s.name AS section_name,g.name AS grade_name,c.name AS course_name FROM quickbite.users u JOIN quickbite.profiles p ON p.user_id=u.id LEFT JOIN quickbite.user_identity i ON i.user_id=u.id LEFT JOIN quickbite.academic_sections s ON s.id=i.section_id LEFT JOIN quickbite.academic_grades g ON g.id=i.grade_id LEFT JOIN quickbite.academic_courses c ON c.id=i.course_id WHERE u.email=$1 AND u.active',[email.trim().toLowerCase()]);let user=result.rows[0];if(!user||!verifyPassword(password,user.password_hash))return json(response,401,{error:'invalid_credentials'},requestId);const availableRoles=allowedRolesForUser(user);if(role&&!availableRoles.includes(role))return json(response,403,{error:'role_not_allowed'},requestId);const activeRole=role??availableRoles[0];return json(response,200,await issueSession(pool,user,activeRole),requestId);}
+ if(method==='POST'&&url.pathname==='/v1/auth/login'){const {email,password,role}=await readJson(request);if(typeof email!=='string'||typeof password!=='string')return json(response,400,{error:'invalid_credentials'},requestId);const result=await pool.query('SELECT u.id,u.email,u.role,u.password_hash,p.full_name,i.document_number,i.section_id,i.grade_id,i.course_id,i.course,s.name AS section_name,g.name AS grade_name,c.name AS course_name FROM quickbite.users u JOIN quickbite.profiles p ON p.user_id=u.id LEFT JOIN quickbite.user_identity i ON i.user_id=u.id LEFT JOIN quickbite.academic_sections s ON s.id=i.section_id LEFT JOIN quickbite.academic_grades g ON g.id=i.grade_id LEFT JOIN quickbite.academic_courses c ON c.id=i.course_id WHERE u.email=$1 AND u.active',[email.trim().toLowerCase()]);let user=result.rows[0];const validPassword=user?await verifyStoredPassword(password,user.password_hash):false;if(!user||!validPassword)return json(response,401,{error:'invalid_credentials'},requestId);if(/^\$2[aby]\$/.test(String(user.password_hash))){try{await pool.query('UPDATE quickbite.users SET password_hash=$1,updated_at=now() WHERE id=$2',[passwordHash(password),user.id]);user={...user,password_hash:passwordHash(password)};}catch{/* keep the validated legacy hash if upgrade fails */}}const availableRoles=allowedRolesForUser(user);if(role&&!availableRoles.includes(role))return json(response,403,{error:'role_not_allowed'},requestId);const activeRole=role??availableRoles[0];return json(response,200,await issueSession(pool,user,activeRole),requestId);}
  if(method==='POST'&&url.pathname==='/v1/auth/role'){const auth=authenticate(request);const {role}=await readJson(request);if(typeof role!=='string'||!['student','parent','staff','admin'].includes(role))return json(response,400,{error:'invalid_role'},requestId);const user=await requireUser(auth);if(!allowedRolesForUser(user).includes(role))return json(response,403,{error:'role_not_allowed'},requestId);return json(response,200,await issueSession(pool,user,role),requestId);}
  if(method==='POST'&&url.pathname==='/v1/auth/refresh'){const {refreshToken}=await readJson(request);if(typeof refreshToken!=='string')return json(response,401,{error:'invalid_refresh_token'},requestId);const client=await pool.connect();try{await client.query('BEGIN');const result=await client.query("SELECT s.id AS session_id,u.id,u.email,u.role,p.full_name FROM quickbite.auth_sessions s JOIN quickbite.users u ON u.id=s.user_id JOIN quickbite.profiles p ON p.user_id=u.id WHERE s.refresh_token_hash=$1 AND s.revoked_at IS NULL AND s.expires_at>now() FOR UPDATE",[hashToken(refreshToken)]);const user=result.rows[0];if(!user){await client.query('ROLLBACK');return json(response,401,{error:'invalid_refresh_token'},requestId);}await client.query('UPDATE quickbite.auth_sessions SET revoked_at=now() WHERE id=$1',[user.session_id]);const availableRoles=allowedRolesForUser(user); const tokenRole=refreshToken.split('.')[0]; const activeRole=availableRoles.includes(tokenRole)?tokenRole:availableRoles[0]; const session=await issueSession(client,user,activeRole);await client.query('COMMIT');return json(response,200,session,requestId);}finally{client.release();}}
  if(method==='POST'&&url.pathname==='/v1/auth/logout'){const {refreshToken}=await readJson(request);if(typeof refreshToken==='string')await pool.query('UPDATE quickbite.auth_sessions SET revoked_at=now() WHERE refresh_token_hash=$1',[hashToken(refreshToken)]);return response.writeHead(204,{'x-request-id':requestId}).end();}
