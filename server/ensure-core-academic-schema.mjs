@@ -192,22 +192,61 @@ CREATE INDEX IF NOT EXISTS idx_academic_courses_active ON quickbite.academic_cou
 ];
 
 export async function ensureCoreAcademicSchema(pool) {
-  const probe = await pool.query(
-    "SELECT to_regclass('quickbite.users') AS users_table, to_regclass('quickbite.user_identity') AS identity_table, to_regclass('quickbite.academic_sections') AS academic_sections",
-  );
+  const probe = await pool.query(`
+    SELECT
+      to_regclass('quickbite.users') AS users_table,
+      to_regclass('quickbite.user_identity') AS identity_table,
+      to_regclass('quickbite.academic_sections') AS academic_sections,
+      to_regclass('quickbite.academic_grades') AS academic_grades,
+      to_regclass('quickbite.academic_courses') AS academic_courses,
+      to_regclass('quickbite.student_enrollments') AS student_enrollments,
+      to_regclass('quickbite.recess_schedules') AS recess_schedules,
+      to_regclass('quickbite.recess_schedule_targets') AS recess_schedule_targets
+  `);
   const row = probe.rows[0];
 
   if (!row.users_table || !row.identity_table) {
     throw new Error('core_database_schema_missing');
   }
 
-  if (row.academic_sections) return;
+  const activeColumns = await pool.query(`
+    SELECT table_name
+    FROM information_schema.columns
+    WHERE table_schema = 'quickbite'
+      AND table_name IN ('academic_sections','academic_grades','academic_courses')
+      AND column_name = 'active'
+  `);
+
+  const schemaReady =
+    Object.values(row).every(Boolean) &&
+    activeColumns.rowCount === 3;
+
+  if (schemaReady) return;
 
   const client = await pool.connect();
   try {
     await client.query('SELECT pg_advisory_lock($1)', [ADVISORY_LOCK_KEY]);
-    const recheck = await client.query("SELECT to_regclass('quickbite.academic_sections') AS academic_sections");
-    if (recheck.rows[0].academic_sections) return;
+    const recheck = await client.query(`
+      SELECT
+        to_regclass('quickbite.academic_sections') AS academic_sections,
+        to_regclass('quickbite.academic_grades') AS academic_grades,
+        to_regclass('quickbite.academic_courses') AS academic_courses,
+        to_regclass('quickbite.student_enrollments') AS student_enrollments,
+        to_regclass('quickbite.recess_schedules') AS recess_schedules,
+        to_regclass('quickbite.recess_schedule_targets') AS recess_schedule_targets
+    `);
+    const recheckColumns = await client.query(`
+      SELECT table_name
+      FROM information_schema.columns
+      WHERE table_schema = 'quickbite'
+        AND table_name IN ('academic_sections','academic_grades','academic_courses')
+        AND column_name = 'active'
+    `);
+    const recheckRow = recheck.rows[0];
+    const recheckReady =
+      Object.values(recheckRow).every(Boolean) &&
+      recheckColumns.rowCount === 3;
+    if (recheckReady) return;
 
     await client.query('BEGIN');
     try {
