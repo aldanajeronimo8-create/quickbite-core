@@ -2,7 +2,6 @@ import { create } from 'zustand';
 import type { Profile } from '../lib/supabase';
 import { writeAuditLog } from '../lib/auditLog';
 import { quickbiteApi, type ApiSession } from '../services/api/quickbiteApi';
-import { canAccessAdmin } from '../lib/access';
 
 const ACTIVE_STUDENT_STORAGE_KEY = 'quickbite.parent.activeStudent';
 
@@ -47,15 +46,10 @@ export const useAuthStore = create<AuthState>((set) => ({
     try {
       const session = await api().login(normalizedEmail, password);
       const profile = profileFromSession(session);
-      if (!canAccessAdmin(profile.role)) {
-        await api().logout();
-        throw new Error('No tienes permisos de administrador.');
-      }
       writeAuditLog({ action: 'auth.login', actorId: profile.id, actorEmail: profile.email });
       set({ user: profile, session: { token: session.accessToken }, loading: false });
     } catch (error) {
       writeAuditLog({ action: 'auth.error', actorEmail: normalizedEmail, metadata: { reason: String(error) } });
-      if (error instanceof Error && error.message === 'No tienes permisos de administrador.') throw error;
       throw new Error('Correo o contraseña incorrectos.');
     }
   },
