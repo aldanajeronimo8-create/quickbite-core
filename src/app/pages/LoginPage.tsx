@@ -146,6 +146,7 @@ export function LoginPage() {
             <Button type="submit" disabled={loading} className="qb-auth-primary w-full font-semibold py-6 rounded-xl">{loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Verificando...</> : 'Iniciar sesión'}</Button>
             <div className="my-5 flex items-center gap-3 text-xs text-slate-400"><span className="h-px flex-1 bg-slate-200" /><span>o</span><span className="h-px flex-1 bg-slate-200" /></div>
             <Button type="button" variant="outline" disabled={loading || googleLoading} onClick={handleGoogle} className="w-full rounded-xl py-6 font-semibold">{googleLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Conectando con Google...</> : <><Chrome className="mr-2 h-4 w-4" />Continuar con Google</>}</Button>
+            <div className="mt-3 text-center text-sm text-slate-500">¿Eres padre de familia y aún no tienes cuenta? <Link to="/register-parent" className="font-bold text-blue-700 underline">Crear cuenta de padre</Link></div>
             {getBoundStudentUserId() && <Button type="button" variant="ghost" onClick={() => void changeStudentOnDevice()} disabled={loading} className="qb-auth-secondary-action w-full text-xs">Cambiar estudiante en este dispositivo</Button>}
           </form>
           <div className="mt-6 border-t pt-4 text-center text-xs text-slate-500">
