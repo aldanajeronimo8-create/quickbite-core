@@ -8,10 +8,13 @@ export function StaffDashboardPage() {
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-8 text-slate-900 sm:px-6 lg:px-10">
       <div className="mx-auto max-w-5xl">
-        <header className="mb-8">
+        <header className="mb-8 flex items-start justify-between gap-4">
+          <div>
           <p className="text-sm font-semibold text-blue-700">QuickBite Staff</p>
           <h1 className="mt-1 text-3xl font-black tracking-tight">Operaciones de cafetería</h1>
           <p className="mt-2 text-sm text-slate-600">Sesión operativa de {user?.full_name ?? 'personal autorizado'}.</p>
+          </div>
+          <Link to="/choose-role" className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold shadow-sm">Cambiar espacio</Link>
         </header>
 
         <section className="grid gap-4 md:grid-cols-2" aria-label="Operaciones disponibles">
