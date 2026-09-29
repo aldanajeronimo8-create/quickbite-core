@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { RefreshCw } from 'lucide-react';
-import { requireSupabaseClient } from '../../lib/supabase';
 import { canAccessAdmin } from '../../lib/access';
-import { getProfile } from '../../repositories/quickbiteRepository';
+import { quickbiteApi } from '../../services/api/quickbiteApi';
 import { useAuthStore } from '../../store/authStore';
 import { useDataStore } from '../../store/dataStore';
 import { isVisualPreviewMode } from '../contexts/VisualThemeProvider';
@@ -10,7 +9,6 @@ import { isVisualPreviewMode } from '../contexts/VisualThemeProvider';
 export function AdminProtectedDataGate({ children }: { children: ReactNode }) {
   const user = useAuthStore((state) => state.user);
   const authLoading = useAuthStore((state) => state.loading);
-  const setUser = useAuthStore((state) => state.setUser);
   const loadData = useDataStore((state) => state.loadData);
   const preview = isVisualPreviewMode();
   const [loading, setLoading] = useState(!preview);
@@ -21,25 +19,28 @@ export function AdminProtectedDataGate({ children }: { children: ReactNode }) {
     setLoading(true);
     setError(null);
     try {
-      const client = requireSupabaseClient();
-      const { data, error: sessionError } = await client.auth.getSession();
-      if (sessionError) throw sessionError;
-      const sessionUser = data.session?.user;
-      if (!sessionUser) throw new Error('La sesión administrativa no está disponible. Inicia sesión nuevamente.');
-      const profile = await getProfile(sessionUser.id);
-      if (!profile || !canAccessAdmin(profile.role)) {
-        setUser(null);
-        await client.auth.signOut();
+      // Core auth is Firebase OAuth/API based. Do not re-authenticate the admin
+      // through the legacy Supabase Auth client here.
+      const session = quickbiteApi().getSession();
+      if (!session || !user) {
+        throw new Error('La sesión administrativa no está disponible. Inicia sesión nuevamente.');
+      }
+      if (!canAccessAdmin(user.role)) {
         throw new Error('La sesión no tiene permisos administrativos. Inicia sesión con una cuenta Admin.');
       }
-      if (!user || user.id !== profile.id || user.role !== profile.role) setUser(profile);
+
+      const { user: currentUser } = await quickbiteApi().me();
+      if (!canAccessAdmin(currentUser.role)) {
+        throw new Error('La sesión no tiene permisos administrativos. Inicia sesión con una cuenta Admin.');
+      }
+
       await loadData({ silent: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudieron preparar los datos administrativos.');
     } finally {
       setLoading(false);
     }
-  }, [authLoading, loadData, preview, setUser, user]);
+  }, [authLoading, loadData, preview, user]);
 
   useEffect(() => { void prepare(); }, [prepare]);
 
