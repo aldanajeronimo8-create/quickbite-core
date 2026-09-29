@@ -46,7 +46,7 @@ export function StaffOrdersPage() {
     try {
       const result = await quickbiteApi().updateOrderStatus(order.id, status);
       setOrders((current) => current.map((item) => item.id === order.id ? result.order : item));
-      toast.success(`Pedido #${order.order_number ?? order.pickup_code}: ${statusLabel[status]}.`);
+      toast.success(`Pedido #${order.order_number ?? order.pickup_code}: ${statusLabel[status as ApiOrder['status']]}.`);
     } catch (cause) {
       toast.error(cause instanceof Error ? cause.message : 'No se pudo actualizar el pedido.');
     } finally {
