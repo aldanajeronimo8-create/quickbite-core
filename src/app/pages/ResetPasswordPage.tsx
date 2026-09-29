@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -12,13 +12,12 @@ export function ResetPasswordPage() {
   const navigate = useNavigate();
   const [ready, setReady] = useState(false);
   const [expired, setExpired] = useState(false);
-    const [password, setPassword] = useState('');
+  const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPwd, setShowPwd] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [passwordError, setPasswordError] = useState('');
   const [loading, setLoading] = useState(false);
-  const readyRef = useRef(false);
 
   useEffect(() => {
     const code = new URLSearchParams(window.location.search).get('oobCode');
@@ -68,7 +67,7 @@ export function ResetPasswordPage() {
         </div>
 
         <div className="qb-auth-card bg-white/10 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/20 p-8">
-          {!ready && !expired && !administratorRecoveryBlocked && (
+          {!ready && !expired && (
             <div className="text-center py-8">
               <Loader2 className="w-10 h-10 text-blue-400 animate-spin mx-auto mb-4" />
               <p className="text-white/70 text-sm">Verificando enlace de recuperación…</p>
