@@ -11,7 +11,37 @@ import { handleCoreFeatureRoute } from './core-features.mjs';
 const required = ['DATABASE_URL', 'AUTH_JWT_SECRET'];
 for (const name of required) if (!process.env[name]) throw new Error(`${name} is required`);
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-const coreSchemaReady = ensureCoreAcademicSchema(pool).then(() => ensureCoreFeatureSchema(pool));
+async function ensureDemoCatalog() {
+  if (String(process.env.QUICKBITE_DEMO_SEED ?? 'true').toLowerCase() === 'false') return;
+  const { rows } = await pool.query('SELECT COUNT(*)::int AS count FROM quickbite.products');
+  if (Number(rows[0]?.count ?? 0) > 0) return;
+  await pool.query(`
+    INSERT INTO quickbite.categories (id,name,active)
+    VALUES
+      ('10000000-0000-0000-0000-000000000001','Bebidas',true),
+      ('10000000-0000-0000-0000-000000000002','Comidas',true)
+    ON CONFLICT (id) DO UPDATE SET active=true
+  `);
+  await pool.query(`
+    INSERT INTO quickbite.products (id,category_id,name,description,price,active)
+    VALUES
+      ('20000000-0000-0000-0000-000000000001','10000000-0000-0000-0000-000000000001','Agua','Producto demo para validar el flujo de compra.',2500,true),
+      ('20000000-0000-0000-0000-000000000002','10000000-0000-0000-0000-000000000002','Sandwich','Producto demo para validar carrito y pedidos.',7000,true),
+      ('20000000-0000-0000-0000-000000000003','10000000-0000-0000-0000-000000000002','Fruta','Producto demo para validar categorías y stock.',3500,true)
+    ON CONFLICT (id) DO UPDATE SET active=true
+  `);
+  await pool.query(`
+    INSERT INTO quickbite.inventory (product_id,quantity)
+    VALUES
+      ('20000000-0000-0000-0000-000000000001',50),
+      ('20000000-0000-0000-0000-000000000002',25),
+      ('20000000-0000-0000-0000-000000000003',30)
+    ON CONFLICT (product_id) DO UPDATE SET quantity=EXCLUDED.quantity,updated_at=now()
+  `);
+}
+const coreSchemaReady = ensureCoreAcademicSchema(pool)
+  .then(() => ensureCoreFeatureSchema(pool))
+  .then(() => ensureDemoCatalog());
 const port = Number(process.env.PORT ?? 3000);
 const origins = new Set((process.env.ALLOWED_ORIGINS ?? 'http://localhost:5173').split(',').map((value) => value.trim()));
 const accessTtlSeconds = 30 * 60;
