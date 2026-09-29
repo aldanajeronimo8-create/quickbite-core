@@ -1,5 +1,5 @@
 import * as XLSX from '@redoper1/xlsx-js-style';
-import type { Order } from '../lib/supabase';
+import type { Order } from '../types/domain';
 import { dateKeyInBogota, formatPeriodDateRange, getMonthWeekGroups, type ReportPeriod } from '../lib/reportPeriods';
 
 const dateFormatter = new Intl.DateTimeFormat('es-CO', { timeZone: 'America/Bogota', day: '2-digit', month: '2-digit', year: 'numeric' });
