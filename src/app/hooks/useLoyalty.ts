@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { appConfig } from '../../config/appConfig';
 import { getErrorMessage } from '../../lib/errorMessage';
-import { requireSupabaseClient, type LoyaltyRedemption, type LoyaltyReward, type LoyaltySettings } from '../../lib/supabase';
+import type { LoyaltyRedemption, LoyaltyReward, LoyaltySettings } from '../../types/loyalty';
 import { getLoyaltySettings, getUserLoyaltyPoints, listLoyaltyRewards, listUserLoyaltyRedemptions, redeemLoyaltyReward } from '../../repositories/quickbiteRepository';
 
 export function useLoyalty(userId: string | undefined, _orders?: unknown) {
@@ -47,36 +47,11 @@ export function useLoyalty(userId: string | undefined, _orders?: unknown) {
 
     const refreshDelay = Math.max(appConfig.dataRefreshIntervalMs, 15_000);
     const interval = window.setInterval(() => void refresh(), refreshDelay);
-    if (!appConfig.supabaseRealtimeEnabled) {
-      return () => window.clearInterval(interval);
-    }
-
-    const supabase = requireSupabaseClient();
-    const channel = supabase
-      .channel(`loyalty-${userId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'loyalty_settings' }, () => void refresh())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'loyalty_rewards' }, () => void refresh())
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'loyalty_redemptions', filter: `user_id=eq.${userId}` },
-        () => void refresh(),
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'loyalty_point_ledger', filter: `user_id=eq.${userId}` },
-        () => void refresh(),
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'orders', filter: `user_id=eq.${userId}` },
-        () => void refresh(),
-      )
-      .subscribe();
-
-    return () => {
-      window.clearInterval(interval);
-      void supabase.removeChannel(channel);
-    };
+    // Core API is the source of truth. Until loyalty realtime endpoints are exposed,
+    // refresh on a short interval rather than opening a legacy Supabase channel.
+    const refreshDelay = Math.max(appConfig.dataRefreshIntervalMs, 15_000);
+    const interval = window.setInterval(() => void refresh(), refreshDelay);
+    return () => window.clearInterval(interval);
   }, [refresh, userId]);
 
   const spentPoints = useMemo(
