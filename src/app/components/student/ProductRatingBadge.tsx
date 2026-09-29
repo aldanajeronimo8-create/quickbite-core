@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { Heart, Star } from 'lucide-react';
 import { toast } from 'sonner';
 import { quickbiteApi } from '../../../services/api/quickbiteApi';
-import { useAuthStore } from '../../../store/authStore';
 
 type RatingSummary = { average_stars: number; review_count: number };
 
