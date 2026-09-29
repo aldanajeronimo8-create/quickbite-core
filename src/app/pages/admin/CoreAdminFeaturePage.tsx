@@ -2,7 +2,7 @@ import { useEffect,useMemo,useState } from 'react';
 import { ArrowLeft,BarChart3,Check,Gift,Power,RefreshCw,ShieldCheck,X } from 'lucide-react';
 import { Link,useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
-import { quickbiteApi,type ApiOrder } from '../../../services/api/quickbiteApi';
+import { quickbiteApi } from '../../../services/api/quickbiteApi';
 
 const money=(n:number)=>'$'+Number(n||0).toLocaleString('es-CO');
 type OrderStatus='pending'|'preparing'|'ready'|'delivered'|'cancelled';
@@ -31,7 +31,7 @@ export function CoreAdminFeaturePage(){
  useEffect(()=>{void load()},[path]);
  const heading=path==='/admin'?'Dashboard':path.includes('/operations')?'Ventanas e inventario':path.includes('/rankings')?'Ranking de productos':path.includes('/orders')?'Pedidos':path.includes('/payments')?'Pagos':path.includes('/wallet')?'Recargas':path.includes('/menu')?'Menú y categorías':path.includes('/inventory')?'Inventario':path.includes('/nutrition')?'Nutrición':path.includes('/reviews')?'Reseñas':path.includes('/loyalty')?'Puntos y recompensas':path.includes('/reports')?'Informes':path.includes('/history')?'Auditoría y cancelaciones':path.includes('/system')?'Estado del sistema':path.includes('/verification')?'Verificación de pedidos':'Reiniciar flujo';
  const changeStatus=async(id:string,s:OrderStatus)=>{setBusy(id);try{await quickbiteApi().updateOrderStatus(id,s);toast.success('Estado actualizado.');await load()}catch(e){toast.error(e instanceof Error?e.message:'No se pudo actualizar.')}finally{setBusy(null)}};
- return <section className="space-y-5"><div className="flex items-center justify-between gap-3"><div><Link to="/admin/features" className="inline-flex items-center gap-2 text-xs font-black text-blue-700"><ArrowLeft className="h-4 w-4"/>Funciones</Link><h1 className="mt-2 text-3xl font-black text-[var(--qb-text)]">{heading}</h1></div><button onClick={()=>void load()} className="rounded-xl border bg-white px-4 py-2 text-sm font-black"><RefreshCw className="mr-2 inline h-4 w-4"/>Actualizar</button></div>
+ return <section className="space-y-5"><div className="flex items-center justify-between gap-3"><div><Link to="/admin/features" className="inline-flex items-center gap-2 text-xs font-black text-blue-700"><ArrowLeft className="h-4 w-4"/>Funciones</Link><h1 className="mt-2 text-3xl font-black text-[var(--qb-text)]">{heading}</h1></div><button onClick={()=>void load()} className="rounded-xl border bg-white px-4 py-2 text-sm font-black disabled:opacity-50" disabled={loading}><RefreshCw className="mr-2 inline h-4 w-4"/>Actualizar</button></div>
  {path==='/admin'&&<Dashboard data={data}/>}
  {path.includes('/operations')&&<Operations data={data} reload={load}/>}
  {path.includes('/rankings')&&<Rankings orders={data??[]}/>}
