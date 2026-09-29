@@ -137,6 +137,8 @@ export class QuickBiteApi {
   updateStudentAccount(input: { fullName?: string; dietaryPreferences?: string[]; allergies?: string | null; guardianNotes?: string | null }) { return this.request<{ user: ApiUser }>('/v1/student/account', { method: 'PATCH', body: JSON.stringify(input) }); }
   studentLinkCode(forceNew = false) { return this.request<{ code: string; expires_at: string }>('/v1/student/link-code' + (forceNew ? '' : ''), { method: forceNew ? 'POST' : 'GET', body: forceNew ? '{}' : undefined }); }
   studentFavorites() { return this.request<{ items: Array<{ id: string; product_id?: string; name: string; description: string | null; price: number; stock: number; image_url?: string | null; available?: boolean; category_name?: string | null; category_id?: string | null }> }>('/v1/student/favorites'); }
+  studentNutrition() { return this.request<{ items: any[] }>('/v1/nutrition'); }
+  productRating(productId: string) { return this.request<{ rating: { average_stars: number; review_count: number } }>('/v1/products/rating?productId=' + encodeURIComponent(productId)); }
   studentReviews() { return this.request<{ reviews: any[]; purchases: any[] }>('/v1/student/reviews'); }
   submitReview(input: { orderId: string; productId: string; stars: number; comment?: string }) { return this.request<{ review: any }>('/v1/student/reviews', { method: 'POST', body: JSON.stringify(input) }); }
   studentRewards() { return this.request<{ enabled: boolean; availablePoints: number; rewards: any[]; redemptions: any[] }>('/v1/student/rewards'); }
