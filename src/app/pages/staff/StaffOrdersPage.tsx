@@ -88,7 +88,7 @@ export function StaffOrdersPage() {
             <p className="p-6 text-sm text-slate-500">No hay pedidos disponibles.</p>
           ) : (
             orders.map((order) => {
-              const next = nextStatus[order.status];
+              const next = nextStatus[order.status as OrderStatus];
               const actionLabel = order.status === 'pending' ? 'Empezar' : order.status === 'preparing' ? 'Marcar listo' : order.status === 'ready' ? 'Entregar' : null;
               return (
                 <div key={order.id} className="grid grid-cols-[1.2fr_.8fr_1fr_1fr] gap-4 border-b border-slate-100 px-5 py-4 text-sm last:border-b-0">
