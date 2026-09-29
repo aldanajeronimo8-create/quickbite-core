@@ -34,9 +34,9 @@ export function CoreAdminFeaturePage(){
  return <section className="space-y-5"><div className="flex items-center justify-between gap-3"><div><Link to="/admin/features" className="inline-flex items-center gap-2 text-xs font-black text-blue-700"><ArrowLeft className="h-4 w-4"/>Funciones</Link><h1 className="mt-2 text-3xl font-black text-[var(--qb-text)]">{heading}</h1></div><button onClick={()=>void load()} className="rounded-xl border bg-white px-4 py-2 text-sm font-black disabled:opacity-50" disabled={loading}><RefreshCw className="mr-2 inline h-4 w-4"/>Actualizar</button></div>
  {path==='/admin'&&<Dashboard data={data}/>}
  {path.includes('/operations')&&<Operations data={data} reload={load}/>}
- {path.includes('/rankings')&&<Rankings orders={data??[]}/>}
+ {path.includes('/rankings')&&<Rankings orders={Array.isArray(data)?data:[]}/>}
  {path.includes('/orders')&&<Orders data={Array.isArray(data)?data:[]} busy={busy} changeStatus={changeStatus}/>}
- {path.includes('/payments')&&<Payments data={data??[]} reload={load}/>}
+ {path.includes('/payments')&&<Payments data={Array.isArray(data)?data:[]} reload={load}/>}
  {path.includes('/wallet')&&<Wallet data={data} reload={load}/>}
  {path.includes('/menu')&&<Menu data={data} reload={load}/>}
  {path.includes('/inventory')&&<Inventory data={data} reload={load}/>}
