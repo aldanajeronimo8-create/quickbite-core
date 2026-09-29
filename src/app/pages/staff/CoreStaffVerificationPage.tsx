@@ -1,0 +1,11 @@
+import { useState } from 'react';
+import { ArrowLeft,CheckCircle2,ShieldCheck } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { toast } from 'sonner';
+import { quickbiteApi } from '../../../services/api/quickbiteApi';
+
+export function CoreStaffVerificationPage(){
+ const [code,setCode]=useState('');const [result,setResult]=useState<any>(null);const [busy,setBusy]=useState(false);
+ const verify=async()=>{if(!code.trim())return;setBusy(true);try{const r=await quickbiteApi().verifyPickup(code);setResult(r);toast.success(r.alreadyDelivered?'El pedido ya estaba entregado.':'Recogida verificada correctamente.')}catch(e){setResult(null);toast.error(e instanceof Error?e.message:'No se pudo verificar.')}finally{setBusy(false)}};
+ return <main className="qb-page min-h-screen p-5 sm:p-8"><div className="mx-auto max-w-xl space-y-5"><Link to="/staff/features" className="inline-flex items-center gap-2 text-xs font-black text-emerald-700"><ArrowLeft className="h-4 w-4"/>Funciones Staff</Link><section className="qb-surface rounded-3xl border qb-border p-6"><div className="flex items-center gap-3"><ShieldCheck className="h-6 w-6 text-blue-600"/><div><h1 className="qb-text text-2xl font-black">Verificación de recogidas</h1><p className="qb-text-secondary text-sm">Ingresa el código del pedido para validar y registrar la entrega.</p></div></div><input value={code} onChange={e=>setCode(e.target.value.toUpperCase())} placeholder="QB-XXXXXXXX" className="mt-6 w-full rounded-xl border qb-border bg-transparent px-4 py-3 text-2xl font-black tracking-widest"/><button onClick={()=>void verify()} disabled={busy} className="mt-3 w-full rounded-xl bg-blue-600 px-5 py-3 font-black text-white">{busy?'Verificando...':'Verificar recogida'}</button></section>{result?.order&&<section className="qb-surface rounded-3xl border qb-border p-6"><CheckCircle2 className="h-8 w-8 text-emerald-500"/><h2 className="qb-text mt-3 text-xl font-black">Pedido #{result.order.order_number??result.order.pickup_code}</h2><p className="qb-text-secondary mt-1">{result.alreadyDelivered?'Ya estaba entregado.':'Entrega registrada ahora.'}</p><p className="mt-3 text-2xl font-black">{'$'+Number(result.order.total).toLocaleString('es-CO')}</p></section>}</div></main>;
+}
