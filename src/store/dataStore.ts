@@ -40,10 +40,6 @@ interface DataState {
   clearHistory: () => void;
 }
 
-const unsupported = (feature: string): never => {
-  throw new Error(`${feature} todavía no está expuesto por QuickBite Core API.`);
-};
-
 function mapMenuItem(item: MenuItem): Product {
   return {
     id: item.id,
