@@ -142,9 +142,18 @@ export function StudentMenuPage() {
     if (!student) return;
     let active = true;
     async function loadNutrition() {
-      if (active) setNutritionByProduct({});
+      try {
+        const result = await quickbiteApi().studentNutrition();
+        if (!active) return;
+        const next: Record<string, ProductNutrition> = {};
+        for (const row of result.items ?? []) next[row.product_id] = row as ProductNutrition;
+        setNutritionByProduct(next);
+      } catch {
+        if (active) setNutritionByProduct({});
+      }
     }
     void loadNutrition();
+    return () => { active = false; };
   }, [student]);
 
   const myOrders = useMemo(() => (student ? orders.filter((o) => o.user_id === student.id) : []), [orders, student]);
