@@ -104,9 +104,6 @@ importers:
       '@redoper1/xlsx-js-style':
         specifier: 1.2.4
         version: 1.2.4
-      '@supabase/supabase-js':
-        specifier: 2.110.1
-        version: 2.110.1
       canvas-confetti:
         specifier: 1.9.4
         version: 1.9.4
