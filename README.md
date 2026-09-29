@@ -1,6 +1,6 @@
-# QuickBite
+# QuickBite Core
 
-Aplicación web completa de QuickBite para el QuickBite.
+Aplicación web de QuickBite para la operación digital de la cafetería escolar.
 
 ## Arquitectura activa
 
@@ -9,64 +9,103 @@ El repositorio funciona como un proyecto único:
 - Frontend React + TypeScript + Vite
 - API HTTP de QuickBite Core
 - PostgreSQL detrás de la API
-- Vercel para el despliegue web y las funciones de API
+- Firebase Authentication para acceso Google
+- Vercel para el despliegue web y la API
 
-El frontend activo no se conecta directamente a Supabase. Todas las operaciones activas de autenticación, menú, pedidos, preferencias, staff y administración pasan por la API de QuickBite Core.
+Todas las operaciones activas de autenticación, menú, pedidos, preferencias, staff y administración pasan por la API de QuickBite Core.
 
-## Rutas activas
+## Roles
 
-- `/`
-- `/login`
-- `/privacy`
-- `/terms`
-- `/data-rights`
-- `/google/onboarding`
-- `/google/complete`
-- `/menu`
-- `/parent/family`
-- `/staff`
-- `/staff/orders`
-- `/admin`
-- `/admin/users`
-- `/admin/recess`
-
-La administración de descansos fue migrada al Core API: su almacenamiento, permisos y asignaciones académicas ya no dependen de Supabase. La pantalla legacy `AdminRecessSchedules.tsx` fue eliminada.
-
-## Desarrollo local
-
-    pnpm install
-    pnpm dev
-
-Frontend: `http://localhost:5173`
-
-API local: `http://localhost:3000`
-
-Variable mínima del frontend:
-
-    VITE_API_BASE_URL=http://localhost:3000
-
-## Producción
-
-En producción, el cliente utiliza automáticamente el mismo origen de la aplicación para las llamadas de Core API. Esto permite desplegar frontend y backend como una sola aplicación en Vercel.
-
-## Autenticación y roles
-
-Los roles disponibles son:
+QuickBite tiene exactamente cuatro roles:
 
 - estudiante
 - padre de familia
 - staff
 - administrador
 
-Las cuentas protegidas se validan en el servidor y no pueden ser gestionadas por sí mismas. La edición de una cuenta protegida requiere otra cuenta protegida.
+Cada rol tiene su propia experiencia y centro de funciones.
 
-Las cuentas Staff/Admin son internas y su creación se limita al rol administrador. Las credenciales protegidas se aprovisionan mediante secretos de entorno; nunca deben almacenarse en Git.
+## Rutas principales
 
-El acceso con Google usa `openid email profile` y, tras la autenticación, solicita únicamente los datos escolares que Google no proporciona y que son necesarios para QuickBite.
+- /login
+- /register-student/form
+- /register-parent
+- /menu
+- /student/features
+- /student/order-windows
+- /student/reviews
+- /student/account
+- /student/wallet
+- /student/history
+- /student/rewards
+- /student/favorites
+- /student/link-code
+- /student/notifications
+- /parent/family
+- /parent/food-controls
+- /parent/wellbeing
+- /staff
+- /staff/features
+- /staff/orders
+- /staff/verification
+- /verify-order
+- /admin
+- /admin/features
+- /admin/orders
+- /admin/payments
+- /admin/wallet
+- /admin/inventory
+- /admin/menu
+- /admin/nutrition
+- /admin/reviews
+- /admin/loyalty
+- /admin/reports
+- /admin/history
+- /admin/system
+- /admin/reset
+- /admin/users
+- /admin/academic
+- /admin/recess
+
+## Desarrollo local
+
+```bash
+pnpm install
+pnpm dev
+```
+
+Frontend: http://localhost:5173  
+API local: http://localhost:3000
+
+Configuración mínima del frontend:
+
+```
+VITE_RUNTIME_MODE=core
+VITE_API_BASE_URL=http://localhost:3000
+```
+
+El servidor requiere:
+
+```
+DATABASE_URL=
+AUTH_JWT_SECRET=
+FIREBASE_PROJECT_ID=
+ALLOWED_ORIGINS=http://localhost:5173
+```
+
+## Autenticación
+
+El acceso con Google usa Firebase Authentication. Core valida el ID token y crea su propia sesión.
+
+Staff y administrador utilizan las credenciales administradas por Core.
 
 ## Calidad
 
-    pnpm typecheck
-    pnpm lint
-    pnpm test
-    pnpm build
+```bash
+pnpm typecheck
+pnpm lint
+pnpm test
+pnpm build
+```
+
+La suite CI ejecuta además el smoke E2E con Playwright.
