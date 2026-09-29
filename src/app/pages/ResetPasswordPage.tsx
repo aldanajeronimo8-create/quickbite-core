@@ -5,15 +5,14 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Lock, Eye, EyeOff, CheckCircle2, Loader2, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
-import { supabase } from '../../lib/supabase';
+import { confirmFirebasePasswordReset, verifyFirebasePasswordResetCode } from '../../services/firebaseAuth';
 import { QuickBiteLogo } from '../components/brand/QuickBiteLogo';
 
 export function ResetPasswordPage() {
   const navigate = useNavigate();
   const [ready, setReady] = useState(false);
   const [expired, setExpired] = useState(false);
-  const [administratorRecoveryBlocked, setAdministratorRecoveryBlocked] = useState(false);
-  const [password, setPassword] = useState('');
+    const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPwd, setShowPwd] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -22,58 +21,15 @@ export function ResetPasswordPage() {
   const readyRef = useRef(false);
 
   useEffect(() => {
-    if (!supabase) {
+    const code = new URLSearchParams(window.location.search).get('oobCode');
+    if (!code) {
       setExpired(true);
-      return undefined;
+      return;
     }
-    const client = supabase;
 
-    const verifyRecoveryAccount = async (userId: string) => {
-      const { data: profile, error } = await client
-        .from('profiles')
-        .select('role')
-        .eq('id', userId)
-        .maybeSingle();
-
-      if (error) {
-        setPasswordError(error.message);
-        setExpired(true);
-        return;
-      }
-      // Administrative accounts (admin/both) may never use email recovery.
-      // Only student/parent accounts can complete this self-service flow.
-      if (!profile || !['student', 'parent'].includes(profile.role)) {
-        await client.auth.signOut();
-        setAdministratorRecoveryBlocked(true);
-        return;
-      }
-
-      readyRef.current = true;
-      setReady(true);
-    };
-
-    const { data: authListener } = client.auth.onAuthStateChange((event, session) => {
-      if (event === 'PASSWORD_RECOVERY' && session?.user) {
-        void verifyRecoveryAccount(session.user.id);
-      }
-    });
-
-    void client.auth.getSession().then(({ data }) => {
-      const url = new URL(window.location.href);
-      const hasRecoveryMarker = url.hash.includes('type=recovery') || url.searchParams.has('code');
-      if (data.session?.user && hasRecoveryMarker) {
-        void verifyRecoveryAccount(data.session.user.id);
-      }
-    }).catch(() => undefined);
-
-    const timer = window.setTimeout(() => {
-      if (!readyRef.current) setExpired(true);
-    }, 10000);
-
-    return () => {
-      authListener.subscription.unsubscribe();
-      window.clearTimeout(timer);
-    };
+    void verifyFirebasePasswordResetCode(code)
+      .then(() => setReady(true))
+      .catch(() => setExpired(true));
   }, []);
 
   const handleReset = async (event: React.FormEvent) => {
@@ -90,11 +46,9 @@ export function ResetPasswordPage() {
 
     setLoading(true);
     try {
-      const client = supabase;
-      if (!client || !ready) throw new Error('El enlace de recuperación no está activo. Solicita uno nuevo.');
-      const { error } = await client.auth.updateUser({ password });
-      if (error) throw error;
-      await client.auth.signOut();
+      const code = new URLSearchParams(window.location.search).get('oobCode');
+      if (!code || !ready) throw new Error('El enlace de recuperación no está activo. Solicita uno nuevo.');
+      await confirmFirebasePasswordReset(code, password);
       toast.success('Contraseña actualizada. Inicia sesión con tu nueva contraseña.');
       navigate('/');
     } catch (error) {
@@ -121,16 +75,7 @@ export function ResetPasswordPage() {
             </div>
           )}
 
-          {administratorRecoveryBlocked && (
-            <div className="text-center py-6">
-              <AlertTriangle className="w-10 h-10 text-yellow-400 mx-auto mb-4" />
-              <h2 className="text-xl font-bold text-white mb-2">Cambio administrado</h2>
-              <p className="text-blue-200 text-sm mb-6">Las cuentas administrativas no pueden restablecer ni cambiar su contraseña mediante recuperación por correo. Otro administrador autorizado debe cambiarla desde el panel de Usuarios.</p>
-              <Button onClick={() => navigate('/')} className="w-full rounded-xl bg-blue-600 py-6 font-medium text-white hover:bg-blue-700">Volver al inicio</Button>
-            </div>
-          )}
-
-          {expired && !administratorRecoveryBlocked && (
+          {expired && (
             <div className="text-center py-6">
               <AlertTriangle className="w-10 h-10 text-yellow-400 mx-auto mb-4" />
               <h2 className="text-xl font-bold text-white mb-2">Enlace inválido o expirado</h2>
@@ -139,7 +84,7 @@ export function ResetPasswordPage() {
             </div>
           )}
 
-          {ready && !administratorRecoveryBlocked && !expired && (
+          {ready && !expired && (
             <form onSubmit={handleReset} className="space-y-5">
               <div>
                 <h2 className="text-2xl font-bold text-white mb-1">Nueva contraseña</h2>
