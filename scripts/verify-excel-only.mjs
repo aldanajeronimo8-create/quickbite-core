@@ -33,7 +33,9 @@ const offenders = [];
 for (const file of files) {
   try {
     const text = await readFile(file, 'utf8');
-    if (forbidden.test(text)) offenders.push(relative(root.pathname, file.pathname));
+    const relativePath = relative(root.pathname, file.pathname);
+    if (relativePath === 'scripts/verify-excel-only.mjs') continue;
+    if (forbidden.test(text)) offenders.push(relativePath);
   } catch {
     // Ignore unreadable optional files; CI reports build/type failures separately.
   }
