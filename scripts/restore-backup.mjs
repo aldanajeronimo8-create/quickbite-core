@@ -1,6 +1,5 @@
 import { basename, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { URL } from 'node:url';
 import { verifyBackup } from './verify-backup.mjs';
 
 function option(args, name) {
