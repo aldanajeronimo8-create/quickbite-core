@@ -104,7 +104,7 @@ export class QuickBiteApi {
   orders() { return this.request<{ items: ApiOrder[] }>('/v1/orders'); }
   wallet() { return this.request<{ balance: number }>('/v1/wallet'); }
   notifications() { return this.request<{ items: Array<{ id: string; user_id: string; order_id?: string | null; type?: string; title: string; body: string; read_at?: string | null; created_at: string }> }>('/v1/notifications'); }
-  markNotificationsRead(notificationIds?: string[]) { return this.request<{ updated: number }>('/v1/notifications/read', { method: 'POST', body: JSON.stringify({ notificationIds: notificationIds ?? [] }) }); }
+  markNotificationRead(notificationId: string) { return this.request<{ notification: unknown }>('/v1/notifications/' + notificationId + '/read', { method: 'POST' }); }
   favorites() { return this.request<{ items: Array<{ product_id: string; name: string; description: string | null; price: number; category_name: string | null }> }>('/v1/favorites'); }
   addFavorite(productId: string) { return this.request<{ productId: string }>('/v1/favorites', { method: 'POST', body: JSON.stringify({ productId }) }); }
   removeFavorite(productId: string) { return this.request<void>('/v1/favorites/' + productId, { method: 'DELETE' }); }
