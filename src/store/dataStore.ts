@@ -52,7 +52,8 @@ function mapMenuItem(item: MenuItem): Product {
     price: Number(item.price),
     category_id: item.category_id ?? '',
     stock: Number(item.stock),
-    available: item.stock > 0,
+    available: item.available ?? item.stock > 0,
+    image_url: item.image_url ?? undefined,
     created_at: new Date().toISOString(),
     category: item.category_id && item.category_name
       ? { id: item.category_id, name: item.category_name, created_at: new Date().toISOString() }
@@ -68,9 +69,15 @@ function mapOrder(item: ApiOrder): Order {
     status: item.status as Order['status'],
     payment_method: item.payment_method as Order['payment_method'],
     payment_status: item.payment_status as Order['payment_status'],
-    order_number: item.pickup_code,
+    order_number: item.order_number ?? item.pickup_code,
     pickup_code: item.pickup_code,
     created_at: item.created_at,
+    estimated_minutes: item.estimated_minutes,
+    admin_hidden: item.admin_hidden,
+    payment_reference: item.payment_reference ?? undefined,
+    notes: item.notes,
+    student_comment: item.student_comment,
+    order_items: (item.order_items ?? []).map((i) => ({ id: i.id, order_id: item.id, product_id: i.product_id, quantity: Number(i.quantity), price: Number(i.price) })),
   };
 }
 
@@ -102,9 +109,9 @@ export const useDataStore = create<DataState>((set, get) => ({
     }
   },
 
-  addProduct: async () => unsupported('La creación de productos'),
-  updateProduct: async () => unsupported('La edición de productos'),
-  deleteProduct: async () => unsupported('La eliminación de productos'),
+  addProduct: async (product) => { await quickbiteApi().createProduct({ name: product.name, description: product.description, price: Number(product.price), categoryId: product.category_id || null, imageUrl: product.image_url || null, stock: Number(product.stock ?? 0) }); await get().loadData({ silent: true }); },
+  updateProduct: async (id, updates) => { await quickbiteApi().updateProduct(id, updates); await get().loadData({ silent: true }); },
+  deleteProduct: async (id) => { await quickbiteApi().deleteProduct(id); await get().loadData({ silent: true }); },
 
   addOrder: async (orderData) => {
     const items = (orderData.order_items ?? []).map((item: any) => ({
@@ -112,7 +119,7 @@ export const useDataStore = create<DataState>((set, get) => ({
       quantity: Number(item.quantity),
     }));
     const idempotencyKey = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
-    const result = await quickbiteApi().createOrder(items, orderData.payment_method, idempotencyKey);
+    const result = await quickbiteApi().createOrder(items, orderData.payment_method, idempotencyKey, orderData.beneficiary_user_id, orderData.student_comment);
     const order = mapOrder(result.order);
     set({ orders: [order, ...get().orders] });
     void writeAuditLog({
@@ -125,15 +132,15 @@ export const useDataStore = create<DataState>((set, get) => ({
     return order.order_number;
   },
 
-  updateOrder: async () => unsupported('La actualización administrativa de pedidos'),
-  moderateOrderPayment: async () => unsupported('La moderación de pagos'),
-  archiveOrders: async () => unsupported('El archivado de pedidos'),
-  resetOrdersForNewPeriod: async () => unsupported('El reinicio de período'),
-  deleteOrder: async () => unsupported('La eliminación de pedidos'),
-  addUser: async () => unsupported('La creación de usuarios'),
-  updateUser: async () => unsupported('La edición de usuarios'),
-  updateProtectedCredentials: async () => unsupported('La gestión de credenciales protegidas'),
-  deleteUser: async () => unsupported('La eliminación de usuarios'),
+  updateOrder: async (id, updates) => { if (updates.status) await quickbiteApi().updateOrderStatus(id, updates.status as any); await get().loadData({ silent: true }); },
+  moderateOrderPayment: async (id, action) => { await quickbiteApi().moderatePayment(id, action); await get().loadData({ silent: true }); },
+  archiveOrders: async (ids) => (await quickbiteApi().archiveOrders(ids)).count,
+  resetOrdersForNewPeriod: async () => { await quickbiteApi().resetPeriod('REINICIAR'); await get().loadData({ silent: true }); return 1; },
+  deleteOrder: async (id) => { await quickbiteApi().deleteOrder(id); await get().loadData({ silent: true }); },
+  addUser: async (user) => { await quickbiteApi().createInternalUser(user); },
+  updateUser: async (user) => { await quickbiteApi().updateAdminUser(user); },
+  updateProtectedCredentials: async (user) => { await quickbiteApi().updateProtectedCredentials(user); },
+  deleteUser: async (id) => { throw new Error('La eliminación de usuarios requiere una acción administrativa específica.'); },
 
   getProductsByCategory: (categoryId) => {
     const visible = get().products.filter((product) => product.available && product.stock > 0);
