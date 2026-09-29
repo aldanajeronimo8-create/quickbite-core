@@ -1,3 +1,7 @@
-# Fase 00 — baseline
+# Fase 00 — Baseline histórico
 
-Inspección realizada en la rama `codex/build-phases-01-17`. El punto de partida contiene una SPA Vite/React, `@supabase/supabase-js`, migraciones en `supabase/migrations/` y clientes Supabase directos. No contenía `server/`, `database/migrations/`, PostgreSQL Core, IndexedDB ni API Core. La evidencia detallada está en `PHASE_18_VALIDATION.md`.
+Este documento conserva el registro del punto de partida del proyecto. No describe la arquitectura activa de QuickBite Core.
+
+La arquitectura actual se encuentra documentada en `docs/ARCHITECTURE.md` y `docs/API.md`.
+
+Estado de la fase: histórico.
