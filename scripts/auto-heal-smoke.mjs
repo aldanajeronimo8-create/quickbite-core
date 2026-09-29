@@ -41,9 +41,9 @@ if (healthUrl) {
   const headers = healthToken ? { 'x-quickbite-health-token': healthToken } : {};
   const health = await checkUrl(healthUrl, headers);
   if (health.status !== 200) {
-    throw new Error(`Supabase health check failed: HTTP ${health.status}.`);
+    throw new Error(`QuickBite Core health check failed: HTTP ${health.status}.`);
   }
-  console.log(`Supabase health check OK: HTTP ${health.status}.`);
+  console.log(`QuickBite Core health check OK: HTTP ${health.status}.`);
 } else {
-  console.log('Supabase health URL not configured; frontend smoke check remains enforced.');
+  console.log('QuickBite Core health URL not configured; frontend smoke check remains enforced.');
 }
