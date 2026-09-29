@@ -21,6 +21,9 @@ type FirebaseAuthModule = {
     };
   }>;
   signOut: (auth: unknown) => Promise<void>;
+  sendPasswordResetEmail: (auth: unknown, email: string, settings?: Record<string, unknown>) => Promise<void>;
+  verifyPasswordResetCode: (auth: unknown, code: string) => Promise<string>;
+  confirmPasswordReset: (auth: unknown, code: string, newPassword: string) => Promise<void>;
 };
 
 const enabled = import.meta.env.VITE_FIREBASE_AUTH_ENABLED !== 'false';
@@ -132,4 +135,20 @@ export async function signOutFirebase() {
   if (!firebaseAuth) return;
   const modules = await loadFirebaseModules();
   await modules.auth.signOut(firebaseAuth);
+}
+
+export async function sendFirebasePasswordResetEmail(email: string) {
+  const { auth, modules } = await getFirebaseAuth();
+  const redirectUrl = typeof window !== 'undefined' ? `${window.location.origin}/reset-password` : undefined;
+  await modules.sendPasswordResetEmail(auth, email.trim().toLowerCase(), redirectUrl ? { url: redirectUrl, handleCodeInApp: true } : undefined);
+}
+
+export async function verifyFirebasePasswordResetCode(code: string) {
+  const { auth, modules } = await getFirebaseAuth();
+  return modules.verifyPasswordResetCode(auth, code);
+}
+
+export async function confirmFirebasePasswordReset(code: string, newPassword: string) {
+  const { auth, modules } = await getFirebaseAuth();
+  await modules.confirmPasswordReset(auth, code, newPassword);
 }
