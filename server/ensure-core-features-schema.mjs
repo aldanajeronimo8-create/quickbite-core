@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS quickbite.pickup_slots (
   CHECK(max_orders IS NULL OR max_orders > 0)
 );
 ALTER TABLE quickbite.orders ADD COLUMN IF NOT EXISTS pickup_slot_id uuid;
-DO $ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='orders_pickup_slot_id_fkey') THEN ALTER TABLE quickbite.orders ADD CONSTRAINT orders_pickup_slot_id_fkey FOREIGN KEY (pickup_slot_id) REFERENCES quickbite.pickup_slots(id) ON DELETE RESTRICT; END IF; END $;
+DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='orders_pickup_slot_id_fkey') THEN ALTER TABLE quickbite.orders ADD CONSTRAINT orders_pickup_slot_id_fkey FOREIGN KEY (pickup_slot_id) REFERENCES quickbite.pickup_slots(id) ON DELETE RESTRICT; END IF; END $$;
 CREATE INDEX IF NOT EXISTS pickup_slots_time_idx ON quickbite.pickup_slots(enabled,starts_at,ends_at);
 CREATE INDEX IF NOT EXISTS orders_pickup_slot_created_idx ON quickbite.orders(pickup_slot_id,created_at DESC);
 CREATE TABLE IF NOT EXISTS quickbite.order_window_settings (
