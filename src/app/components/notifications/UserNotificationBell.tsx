@@ -3,7 +3,7 @@ import { Bell, CheckCheck, Inbox, LoaderCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { quickbiteApi } from '../../../services/api/quickbiteApi';
 import { getErrorMessage } from '../../../lib/errorMessage';
-import type { UserNotification } from '../../../lib/supabase';
+import type { UserNotification } from '../../../types/notifications';
 
 function formatNotificationTime(value: string) {
   return new Intl.DateTimeFormat('es-CO', {
