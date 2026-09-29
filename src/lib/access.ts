@@ -1,17 +1,13 @@
-export type UserRole = 'admin' | 'student' | 'parent' | 'staff';
+export type UserRole = 'admin' | 'student' | 'parent' | 'both' | 'student_parent';
 
 export function canAccessAdmin(role: UserRole) {
-  return role === 'admin';
+  return role === 'admin' || role === 'both';
 }
 
 export function canAccessStudent(role: UserRole) {
-  return role === 'student' || role === 'admin';
+  return role === 'student' || role === 'both' || role === 'admin' || role === 'student_parent';
 }
 
 export function canAccessParent(role: UserRole) {
-  return role === 'parent';
-}
-
-export function canAccessStaff(role: UserRole) {
-  return role === 'staff';
+  return role === 'parent' || role === 'student_parent';
 }
