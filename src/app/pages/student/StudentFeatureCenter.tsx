@@ -1,7 +1,6 @@
 import { ArrowLeft, Bell, Clock3, CreditCard, Heart, History, Info, Link2, Star, UtensilsCrossed, Wallet, MessageSquare } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useStudentContextStore } from '../../../store/studentContextStore';
-import { useLoyaltyProgram } from '../../hooks/useLoyaltyProgram';
 
 const studentCardClass = 'rounded-3xl border qb-border qb-surface p-5 shadow-sm transition-colors hover:shadow-md';
 
@@ -9,7 +8,6 @@ export function StudentFeatureCenter() {
   const navigate = useNavigate();
   const activeStudent = useStudentContextStore((state) => state.activeStudent);
   const clearActiveStudent = useStudentContextStore((state) => state.clearActiveStudent);
-  const { enabled: loyaltyEnabled } = useLoyaltyProgram();
   const returnToParent = () => { clearActiveStudent(); navigate('/parent/family'); };
 
   return <div className="qb-page min-h-screen p-5 sm:p-8">
@@ -24,7 +22,7 @@ export function StudentFeatureCenter() {
         <Link reloadDocument to="/student/favorites" className={studentCardClass}><Heart className="h-5 w-5 text-rose-600 dark:text-rose-300"/><h2 className="qb-text mt-3 font-black">Mis favoritos</h2><p className="qb-text-secondary mt-1 text-sm">Tus alimentos guardados para volver a pedirlos.</p></Link>
         <Link reloadDocument to="/student/account" className={studentCardClass}><Wallet className="h-5 w-5 text-emerald-700 dark:text-emerald-300"/><h2 className="qb-text mt-3 font-black">Mi cuenta</h2><p className="qb-text-secondary mt-1 text-sm">Mis datos, contraseña y preferencias alimentarias.</p></Link>
         <Link reloadDocument to="/student/history" className={studentCardClass}><History className="h-5 w-5 text-blue-700 dark:text-blue-300"/><h2 className="qb-text mt-3 font-black">Pedidos de la semana</h2><p className="qb-text-secondary mt-1 text-sm">Consulta los pedidos realizados durante la semana actual.</p></Link>
-        {loyaltyEnabled && <Link reloadDocument to="/student/rewards" className={studentCardClass}><Star className="h-5 w-5 text-amber-500"/><h2 className="qb-text mt-3 font-black">Puntos y premios</h2><p className="qb-text-secondary mt-1 text-sm">Consulta y canjea tus recompensas disponibles.</p></Link>}
+        <Link reloadDocument to="/student/rewards" className={studentCardClass}><Star className="h-5 w-5 text-amber-500"/><h2 className="qb-text mt-3 font-black">Puntos y premios</h2><p className="qb-text-secondary mt-1 text-sm">Consulta y canjea tus recompensas disponibles.</p></Link>}
         <Link reloadDocument to="/student/notifications" className={studentCardClass}><Bell className="h-5 w-5 text-violet-600 dark:text-violet-300"/><h2 className="qb-text mt-3 font-black">Notificaciones</h2><p className="qb-text-secondary mt-1 text-sm">Revisa avisos y cambios de tus pedidos y recargas.</p></Link>
         <Link reloadDocument to="/student/link-code" className={`${studentCardClass} sm:col-span-2 lg:col-span-3`}><div className="flex items-start gap-3"><Link2 className="h-5 w-5 text-blue-700 dark:text-blue-300"/><div><h2 className="qb-text font-black">Código para vincular a mi familia</h2><p className="qb-text-secondary mt-1 text-sm">Genera o consulta tu código. Un padre, madre o acudiente usa este código desde su cuenta para solicitar el vínculo con tu perfil.</p></div></div></Link>
         <details className="group sm:col-span-2 lg:col-span-3 overflow-hidden rounded-3xl border border-emerald-200/70 bg-emerald-50/70 shadow-sm dark:border-emerald-300/20 dark:bg-emerald-500/5">
