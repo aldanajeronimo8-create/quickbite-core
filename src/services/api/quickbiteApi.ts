@@ -159,6 +159,8 @@ export class QuickBiteApi {
   saveNutrition(input: any) { return this.request<{ item: any }>('/v1/admin/nutrition', { method: 'PUT', body: JSON.stringify(input) }); }
   adminReviews() { return this.request<{ items: any[] }>('/v1/admin/reviews'); }
   moderateReview(id: string, status: 'approved' | 'rejected' | 'pending') { return this.request<{ status: string }>('/v1/admin/reviews/' + id, { method: 'POST', body: JSON.stringify({ status }) }); }
+  createLoyaltyReward(input: { productId: string; title: string; description?: string; pointsRequired: number }) { return this.request<{ reward: any }>('/v1/admin/loyalty/rewards', { method: 'POST', body: JSON.stringify(input) }); }
+  updateLoyaltyReward(id: string, input: any) { return this.request<{ reward: any }>('/v1/admin/loyalty/rewards/' + id, { method: 'PATCH', body: JSON.stringify(input) }); }
   adminLoyalty() { return this.request<{ settings: any; rewards: any[]; redemptions: any[] }>('/v1/admin/loyalty'); }
   setLoyaltyEnabled(enabled: boolean) { return this.request<{ settings: any }>('/v1/admin/loyalty/settings', { method: 'PUT', body: JSON.stringify({ enabled }) }); }
   moderatePayment(orderId: string, action: 'approve' | 'reject') { return this.request<{ order: ApiOrder }>('/v1/admin/orders/' + orderId + '/payment', { method: 'POST', body: JSON.stringify({ action }) }); }
