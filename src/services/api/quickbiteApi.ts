@@ -161,6 +161,7 @@ export class QuickBiteApi {
   moderateReview(id: string, status: 'approved' | 'rejected' | 'pending') { return this.request<{ status: string }>('/v1/admin/reviews/' + id, { method: 'POST', body: JSON.stringify({ status }) }); }
   adminLoyalty() { return this.request<{ settings: any; rewards: any[]; redemptions: any[] }>('/v1/admin/loyalty'); }
   setLoyaltyEnabled(enabled: boolean) { return this.request<{ settings: any }>('/v1/admin/loyalty/settings', { method: 'PUT', body: JSON.stringify({ enabled }) }); }
+  moderatePayment(orderId: string, action: 'approve' | 'reject') { return this.request<{ order: ApiOrder }>('/v1/admin/orders/' + orderId + '/payment', { method: 'POST', body: JSON.stringify({ action }) }); }
   adminWalletTopups() { return this.request<{ items: any[] }>('/v1/admin/wallet/topups'); }
   moderateWalletTopup(id: string, action: 'approve' | 'reject', reason?: string) { return this.request<{ status: string }>('/v1/admin/wallet/topups/' + id, { method: 'POST', body: JSON.stringify({ action, reason }) }); }
   adminCancellations() { return this.request<{ items: any[] }>('/v1/admin/cancellations'); }
@@ -169,6 +170,8 @@ export class QuickBiteApi {
   adminReports(start: string, end: string) { return this.request<{ items: ApiOrder[] }>('/v1/admin/reports?start=' + encodeURIComponent(start) + '&end=' + encodeURIComponent(end)); }
   adminHistory() { return this.request<{ audits: any[]; cancellations: any[] }>('/v1/admin/history'); }
   adminSystem() { return this.request<{ health: any[]; audit_events: number; open_alerts: number }>('/v1/admin/system'); }
+  archiveOrders(ids: string[]) { return this.request<{ count: number }>('/v1/admin/orders/archive', { method: 'POST', body: JSON.stringify({ ids }) }); }
+  deleteOrder(orderId: string) { return this.request<{ status: string }>('/v1/admin/orders/' + orderId, { method: 'DELETE' }); }
   resetPeriod(confirmation: string) { return this.request<{ status: string }>('/v1/admin/reset', { method: 'POST', body: JSON.stringify({ confirmation }) }); }
   verifyPickup(code: string) { return this.request<{ valid: boolean; alreadyDelivered?: boolean; order?: ApiOrder }>('/v1/staff/pickup/verify', { method: 'POST', body: JSON.stringify({ code }) }); }
   createOrder(items: Array<{ productId: string; quantity: number }>, paymentMethod: string, idempotencyKey: string, beneficiaryUserId?: string, comment?: string) {
