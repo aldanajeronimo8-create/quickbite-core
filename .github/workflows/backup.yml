@@ -1,4 +1,4 @@
-name: Supabase backup
+name: QuickBite Core PostgreSQL backup
 
 on:
   schedule:
@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
-      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
     steps:
       - uses: actions/checkout@v4
 
@@ -48,8 +48,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if [[ -z "${SUPABASE_DB_URL}" ]]; then
-            echo "::error::Missing required GitHub Actions secret SUPABASE_DB_URL."
+          if [[ -z "${DATABASE_URL}" ]]; then
+            echo "::error::Missing required GitHub Actions secret DATABASE_URL."
             exit 1
           fi
 
@@ -65,7 +65,7 @@ jobs:
 
           connection_ok=false
           for attempt in 1 2 3; do
-            if "${PG_ISREADY}" --dbname="${SUPABASE_DB_URL}" --timeout=10 >/dev/null 2>&1; then
+            if "${PG_ISREADY}" --dbname="${DATABASE_URL}" --timeout=10 >/dev/null 2>&1; then
               connection_ok=true
               break
             fi
@@ -73,14 +73,14 @@ jobs:
             sleep $((attempt * 5))
           done
           if [[ "${connection_ok}" != true ]]; then
-            echo "::error::Supabase PostgreSQL endpoint is not reachable with SUPABASE_DB_URL."
+            echo "::error::QuickBite Core PostgreSQL endpoint is not reachable with DATABASE_URL."
             exit 1
           fi
 
           dump_ok=false
           for attempt in 1 2 3; do
             if "${PG_DUMP}" \
-              --dbname="${SUPABASE_DB_URL}" \
+              --dbname="${DATABASE_URL}" \
               --format=custom \
               --no-owner \
               --no-privileges \
@@ -93,7 +93,7 @@ jobs:
             sleep $((attempt * 5))
           done
           if [[ "${dump_ok}" != true ]]; then
-            echo "::error::pg_dump could not create a valid Supabase backup after 3 attempts."
+            echo "::error::pg_dump could not create a valid QuickBite Core PostgreSQL backup after 3 attempts."
             exit 1
           fi
 
