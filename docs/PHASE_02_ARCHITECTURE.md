@@ -1,3 +1,14 @@
-# Fase 02 — arquitectura
+# Fase 02 — Arquitectura histórica
 
-Objetivo: `React → QuickBite API → PostgreSQL`. Para offline: `React → IndexedDB → cola/sync → API → PostgreSQL`. La implementación inicial está en `server/index.mjs`, `database/migrations/0001_quickbite_core.sql`, `src/services/api/quickbiteApi.ts` y `src/services/offline/orderQueue.ts`. La SPA existente aún usa Supabase; la migración es parcial.
+Esta fase documenta una etapa anterior del proyecto. La arquitectura activa actualmente es:
+
+```text
+React → QuickBite Core API → PostgreSQL
+React → Firebase Authentication → ID token → QuickBite Core
+```
+
+Para desarrollo offline existe una ruta preparada para sincronización mediante la API Core.
+
+La referencia vigente es `docs/ARCHITECTURE.md`.
+
+Estado de la fase: histórico.
