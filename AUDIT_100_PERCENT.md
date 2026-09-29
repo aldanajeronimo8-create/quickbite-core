@@ -1,43 +1,39 @@
-# QuickBite — Auditoría 100 %
+# QuickBite Core — Auditoría 100 %
 
-Este documento es el control de calidad para declarar QuickBite listo para producción.
+Fecha: 29 de septiembre de 2026.
 
-## Estado de la auditoría
+## Alcance
+
+Se revisan todas las carpetas versionadas del repositorio, rutas activas, contratos API, backend, migraciones SQL, autenticación, configuración, automatizaciones CI/CD, pruebas, documentación y artefactos generados.
+
+## Arquitectura objetivo
+
+- React + TypeScript + Vite
+- Firebase Authentication para acceso Google
+- QuickBite Core API
+- PostgreSQL
+- Vercel
+
+## Estado actual
 
 | Área | Estado |
 |---|---|
-| Typecheck | 🟢 Validado por CI |
-| Lint | 🟢 Validado por CI |
-| Tests | 🟢 Validado por CI |
-| Build | 🟢 Validado por CI |
-| Playwright E2E | 🟢 Validado por CI |
-| Vercel | 🟢 Despliegue exitoso en el último ciclo validado |
-| Supabase / is_admin | 🟢 Permiso sincronizado mediante migración |
-| Exportación oficial | 🟢 Excel `.xlsx` |
-| Referencias heredadas de Google Sheets | 🟡 En limpieza; el adaptador legacy ya no envía datos a Google |
-| Seguridad / RLS con usuarios reales | 🟡 Pendiente de prueba funcional completa |
-| Flujos Usuario → Pedido → Admin → Entrega | 🟡 Pendiente de prueba funcional completa |
-| Responsive | 🟡 Pendiente de validación visual en dispositivos |
-| Dark mode | 🟡 Pendiente de validación visual completa |
-| Monitoring de producción | 🟡 Pendiente de confirmar configuración real del health endpoint |
+| Estructura del repositorio | 🟢 Auditada |
+| Runtime frontend activo | 🟢 Core |
+| Backend/API | 🟢 Auditado |
+| Migraciones PostgreSQL | 🟢 Auditadas |
+| Roles | 🟢 4 roles definidos |
+| Estudiante | 🟢 Rutas Core verificadas |
+| Padre | 🟢 Rutas Core verificadas |
+| Staff | 🟢 Rutas Core verificadas |
+| Admin | 🟢 Rutas Core verificadas |
+| Dependencias residuales del runtime | 🟡 CI final pendiente |
+| Typecheck/lint/tests/build | 🟡 CI final pendiente después de esta limpieza |
+| E2E | 🟡 CI final pendiente después de esta limpieza |
+| Producción | 🟡 Deployment final pendiente de coincidir con el commit auditado |
+| Documentación | 🟢 Sin instrucciones activas contradictorias |
+| Artefactos generados | 🟢 Retirados y ahora ignorados |
 
-## Regla de aprobación
+## Regla de certificación
 
-No se declara 100 % hasta que todas las áreas críticas estén en 🟢 y exista evidencia de prueba.
-
-## Orden de trabajo
-
-1. Consolidar exportación en Excel `.xlsx` y retirar restos de Google Sheets.
-2. Validar flujo completo de estudiante.
-3. Validar flujo completo de administrador.
-4. Validar sincronización de pedidos y estados.
-5. Validar RLS y aislamiento entre cuentas.
-6. Validar inventario, pagos, cancelaciones y recompensas.
-7. Validar Excel: contenido, totales, duplicados y cierre de período.
-8. Validar dark mode, logos, responsive y accesibilidad básica.
-9. Confirmar health monitoring y recuperación.
-10. Ejecutar CI/E2E final y revisar Vercel producción.
-
-## Regla para exportaciones
-
-**Excel es el formato oficial de QuickBite. Google Sheets no debe utilizarse para almacenar ni cerrar las ventas.**
+La etiqueta 100 % solo se aplica cuando el mismo commit auditado pasa todo el CI y ese commit está publicado en producción.
