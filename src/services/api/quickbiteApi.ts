@@ -173,6 +173,13 @@ export class QuickBiteApi {
   archiveOrders(ids: string[]) { return this.request<{ count: number }>('/v1/admin/orders/archive', { method: 'POST', body: JSON.stringify({ ids }) }); }
   deleteOrder(orderId: string) { return this.request<{ status: string }>('/v1/admin/orders/' + orderId, { method: 'DELETE' }); }
   resetPeriod(confirmation: string) { return this.request<{ status: string }>('/v1/admin/reset', { method: 'POST', body: JSON.stringify({ confirmation }) }); }
+  orderWindows(){return this.request<{enabled:boolean;items:any[]}>('/v1/order-windows/status');}
+  adminOrderWindows(){return this.request<{settings:any;items:any[]}>('/v1/admin/order-windows');}
+  setAdminOrderWindowsEnabled(enabled:boolean){return this.request<{settings:any}>('/v1/admin/order-windows/settings',{method:'PUT',body:JSON.stringify({enabled})});}
+  createOrderWindow(input:any){return this.request<{item:any}>('/v1/admin/order-windows',{method:'POST',body:JSON.stringify(input)});}
+  updateOrderWindow(id:string,input:any){return this.request<{item:any}>('/v1/admin/order-windows/'+id,{method:'PATCH',body:JSON.stringify(input)});}
+  deleteOrderWindow(id:string){return this.request<{status:string}>('/v1/admin/order-windows/'+id,{method:'DELETE'});}
+  requestCancellation(input:{orderId:string;orderItemId?:string;quantity?:number;reason:string}){return this.request<{request:any}>('/v1/orders/cancel-request',{method:'POST',body:JSON.stringify(input)});}
   verifyPublicOrder(code: string) { return this.request<{ order: ApiOrder }>('/v1/order/verify?code=' + encodeURIComponent(code), {}, false); }
   verifyPickup(code: string) { return this.request<{ valid: boolean; alreadyDelivered?: boolean; order?: ApiOrder }>('/v1/staff/pickup/verify', { method: 'POST', body: JSON.stringify({ code }) }); }
   createOrder(items: Array<{ productId: string; quantity: number }>, paymentMethod: string, idempotencyKey: string, beneficiaryUserId?: string, comment?: string) {
