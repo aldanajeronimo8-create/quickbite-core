@@ -15,7 +15,6 @@ import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Apple, CheckCircle2, ChevronDown, ChevronRight, Clock3, CreditCard, Filter, History, Home, Leaf, LogOut, Minus, PackageCheck, Plus, ReceiptText, Search, ShoppingCart, Star, Utensils, XCircle } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { canAccessStudent } from '../../../lib/access';
 import { QuickBiteLogo } from '../../components/brand/QuickBiteLogo';
 import { useStudentContextStore } from '../../../store/studentContextStore';
 import { useAuthStore } from '../../../store/authStore';
@@ -301,7 +300,6 @@ export function StudentMenuPage() {
       // receipt or keep the checkout UI in a processing state.
       void (async () => {
         try {
-          const { data: wallet } = await requireSupabaseClient()
             .from('wallet_accounts')
             .select('balance')
             .eq('user_id', student.id)
