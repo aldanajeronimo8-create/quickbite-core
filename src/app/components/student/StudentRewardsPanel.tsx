@@ -1,6 +1,6 @@
 import { Gift, LoaderCircle, LockKeyhole, TicketCheck, Trophy } from 'lucide-react';
 import { Button } from '../ui/button';
-import type { LoyaltyRedemption, LoyaltyReward } from '../../../lib/supabase';
+import type { LoyaltyRedemption, LoyaltyReward } from '../../../types/loyalty';
 
 type Props = {
   availablePoints: number;
