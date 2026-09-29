@@ -9,6 +9,10 @@ const credentials = {
     email: process.env.PLAYWRIGHT_PARENT_EMAIL,
     password: process.env.PLAYWRIGHT_PARENT_PASSWORD,
   }),
+  staff: () => ({
+    email: process.env.PLAYWRIGHT_STAFF_EMAIL,
+    password: process.env.PLAYWRIGHT_STAFF_PASSWORD,
+  }),
   admin: () => ({
     email: process.env.PLAYWRIGHT_ADMIN_EMAIL,
     password: process.env.PLAYWRIGHT_ADMIN_PASSWORD,
@@ -27,7 +31,7 @@ async function collectBrowserErrors(page: Page) {
   page.on('response', async (response) => {
     if (response.status() < 400) return;
     const url = response.url();
-    if (!url.includes('/rest/') && !url.includes('/auth/') && !url.includes('/functions/')) return;
+    if (!url.includes('/v1/') && !url.includes('/api/')) return;
     let body = '';
     try {
       body = (await response.text()).slice(0, 500);
@@ -40,23 +44,17 @@ async function collectBrowserErrors(page: Page) {
   return { consoleErrors, pageErrors, failedResponses };
 }
 
-async function loginAs(page: Page, role: 'student' | 'parent' | 'admin') {
+async function loginAs(page: Page, role: 'student' | 'parent' | 'staff' | 'admin') {
   const account = credentials[role]();
   test.skip(!account.email || !account.password, `Missing Playwright credentials for ${role}.`);
 
   await page.goto('/login');
 
-  if (role === 'parent') {
-    await page.getByRole('button', { name: /iniciar sesi[oó]n como padre/i }).click();
-  } else if (role === 'admin') {
-    await page.getByRole('button', { name: /acceso de administraci[oó]n/i }).click();
-  }
-
   await page.locator('#login-email').fill(account.email!);
   await page.locator('#login-password').fill(account.password!);
   await page.getByRole('button', { name: /^iniciar sesi[oó]n$/i }).click();
 
-  const destination = role === 'student' ? /\/menu$/ : role === 'parent' ? /\/parent\/family$/ : /\/admin(?:\/)?$/;
+  const destination = role === 'student' ? /\/menu$/ : role === 'parent' ? /\/parent\/family$/ : role === 'staff' ? /\/staff(?:\/)?$/ : /\/admin(?:\/)?$/;
   await page.waitForURL(destination, { timeout: 30_000 });
 }
 
@@ -66,7 +64,7 @@ async function assertHealthyInterface(
 ) {
   await page.waitForTimeout(500);
   if (errors.failedResponses.length > 0) {
-    console.log('E2E_SUPABASE_FAILURES', JSON.stringify(errors.failedResponses, null, 2));
+    console.log('E2E_API_FAILURES', JSON.stringify(errors.failedResponses, null, 2));
   }
   if (errors.consoleErrors.length > 0) {
     console.log('E2E_CONSOLE_ERRORS', JSON.stringify(errors.consoleErrors, null, 2));
@@ -105,6 +103,134 @@ test.describe('student interface', () => {
       await page.goto(path);
       await page.waitForLoadState('networkidle');
       await assertHealthyInterface(page, errors);
+    });
+  }
+});
+
+test.describe('staff interface', () => {
+  test('staff can authenticate and open the operations interface', async ({ page }) => {
+    const errors = await collectBrowserErrors(page);
+    await loginAs(page, 'staff');
+    await assertHealthyInterface(page, errors);
+    await expect(page).toHaveURL(/\/staff(?:\/)?$/);
+  });
+
+  for (const path of ['/staff', '/staff/features', '/staff/orders', '/staff/verification']) {
+    test(`staff interface route ${path} loads without browser errors`, async ({ page }) => {
+      const errors = await collectBrowserErrors(page);
+      await loginAs(page, 'staff');
+      await page.goto(path);
+      await page.waitForLoadState('networkidle');
+      await assertHealthyInterface(page, errors);
+      await expect(page).toHaveURL(new RegExp(`${path.replaceAll('/', '\\\/')}import { test, expect, type Page } from '@playwright/test';
+
+const credentials = {
+  student: () => ({
+    email: process.env.PLAYWRIGHT_E2E_EMAIL,
+    password: process.env.PLAYWRIGHT_E2E_PASSWORD,
+  }),
+  parent: () => ({
+    email: process.env.PLAYWRIGHT_PARENT_EMAIL,
+    password: process.env.PLAYWRIGHT_PARENT_PASSWORD,
+  }),
+  staff: () => ({
+    email: process.env.PLAYWRIGHT_STAFF_EMAIL,
+    password: process.env.PLAYWRIGHT_STAFF_PASSWORD,
+  }),
+  admin: () => ({
+    email: process.env.PLAYWRIGHT_ADMIN_EMAIL,
+    password: process.env.PLAYWRIGHT_ADMIN_PASSWORD,
+  }),
+};
+
+async function collectBrowserErrors(page: Page) {
+  const consoleErrors: string[] = [];
+  const pageErrors: string[] = [];
+  const failedResponses: string[] = [];
+
+  page.on('console', (message) => {
+    if (message.type() === 'error') consoleErrors.push(message.text());
+  });
+  page.on('pageerror', (error) => pageErrors.push(error.message));
+  page.on('response', async (response) => {
+    if (response.status() < 400) return;
+    const url = response.url();
+    if (!url.includes('/v1/') && !url.includes('/api/')) return;
+    let body = '';
+    try {
+      body = (await response.text()).slice(0, 500);
+    } catch {
+      body = '<unreadable response body>';
+    }
+    failedResponses.push(`${response.status()} ${response.request().method()} ${url} ${body}`);
+  });
+
+  return { consoleErrors, pageErrors, failedResponses };
+}
+
+async function loginAs(page: Page, role: 'student' | 'parent' | 'staff' | 'admin') {
+  const account = credentials[role]();
+  test.skip(!account.email || !account.password, `Missing Playwright credentials for ${role}.`);
+
+  await page.goto('/login');
+
+  await page.locator('#login-email').fill(account.email!);
+  await page.locator('#login-password').fill(account.password!);
+  await page.getByRole('button', { name: /^iniciar sesi[oó]n$/i }).click();
+
+  const destination = role === 'student' ? /\/menu$/ : role === 'parent' ? /\/parent\/family$/ : role === 'staff' ? /\/staff(?:\/)?$/ : /\/admin(?:\/)?$/;
+  await page.waitForURL(destination, { timeout: 30_000 });
+}
+
+async function assertHealthyInterface(
+  page: Page,
+  errors: { consoleErrors: string[]; pageErrors: string[]; failedResponses: string[] },
+) {
+  await page.waitForTimeout(500);
+  if (errors.failedResponses.length > 0) {
+    console.log('E2E_API_FAILURES', JSON.stringify(errors.failedResponses, null, 2));
+  }
+  if (errors.consoleErrors.length > 0) {
+    console.log('E2E_CONSOLE_ERRORS', JSON.stringify(errors.consoleErrors, null, 2));
+  }
+  if (errors.pageErrors.length > 0) {
+    console.log('E2E_PAGE_ERRORS', JSON.stringify(errors.pageErrors, null, 2));
+  }
+  await expect(page.locator('body')).toBeVisible();
+  await expect(page.locator('body')).not.toContainText(/application error|uncaught|chunkloaderror|algo sali[oó] mal/i);
+  expect(errors.pageErrors).toEqual([]);
+  expect(errors.consoleErrors).toEqual([]);
+  expect(errors.failedResponses).toEqual([]);
+}
+
+test.describe('student interface', () => {
+  test('student can authenticate and open the main interface', async ({ page }) => {
+    const errors = await collectBrowserErrors(page);
+    await loginAs(page, 'student');
+    await assertHealthyInterface(page, errors);
+  });
+
+  for (const path of [
+    '/menu',
+    '/student/features',
+    '/student/account',
+    '/student/wallet',
+    '/student/history',
+    '/student/favorites',
+    '/student/link-code',
+    '/student/notifications',
+    '/student/rewards',
+  ]) {
+    test(`student interface route ${path} loads without browser errors`, async ({ page }) => {
+      const errors = await collectBrowserErrors(page);
+      await loginAs(page, 'student');
+      await page.goto(path);
+      await page.waitForLoadState('networkidle');
+      await assertHealthyInterface(page, errors);
+    });
+  }
+});
+));
     });
   }
 });
