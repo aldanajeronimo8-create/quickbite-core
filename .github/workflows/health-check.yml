@@ -10,11 +10,11 @@ permissions:
 
 jobs:
   health-check:
-    name: Verify Supabase and database health
+    name: Verify QuickBite Core API health
     runs-on: ubuntu-latest
     timeout-minutes: 5
     env:
-      QUICKBITE_HEALTH_URL: ${{ secrets.QUICKBITE_HEALTH_URL }}
+      QUICKBITE_HEALTH_URL: https://quickbite-core.vercel.app/health
       QUICKBITE_HEALTH_TOKEN: ${{ secrets.QUICKBITE_HEALTH_TOKEN }}
     steps:
       - name: Call the health endpoint
