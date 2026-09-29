@@ -1,15 +1,16 @@
 import { test, expect, type Page } from '@playwright/test';
 
-type Role = 'student' | 'parent' | 'admin';
+type Role = 'student' | 'parent' | 'staff' | 'admin';
 
 const credentials: Record<Role, () => { email?: string; password?: string }> = {
   student: () => ({ email: process.env.PLAYWRIGHT_E2E_EMAIL, password: process.env.PLAYWRIGHT_E2E_PASSWORD }),
   parent: () => ({ email: process.env.PLAYWRIGHT_PARENT_EMAIL, password: process.env.PLAYWRIGHT_PARENT_PASSWORD }),
+  staff: () => ({ email: process.env.PLAYWRIGHT_STAFF_EMAIL, password: process.env.PLAYWRIGHT_STAFF_PASSWORD }),
   admin: () => ({ email: process.env.PLAYWRIGHT_ADMIN_EMAIL, password: process.env.PLAYWRIGHT_ADMIN_PASSWORD }),
 };
 
-function isExpectedUnauthenticatedAuthResponse(response: { status: () => number; url: () => string; request: () => { method: () => string } }) {
-  return response.status() === 401 && response.request().method() === 'GET' && /\/auth\/v1\/user(?:$|\?)/.test(response.url());
+function isExpectedUnauthenticatedAuthResponse(_response: { status: () => number; url: () => string; request: () => { method: () => string } }) {
+  return false;
 }
 
 async function monitor(page: Page) {
@@ -21,12 +22,8 @@ async function monitor(page: Page) {
     const status = r.status();
     const url = r.url();
 
-    // Product images are optional. A stale/invalid Supabase Storage object can return
-    // 409 while the UI intentionally falls back to the food icon. It is not an app/API failure.
-    if (status === 409 && /\/storage\/v1\/object\//.test(url)) return;
-
     if (status < 400 || isExpectedUnauthenticatedAuthResponse(r)) return;
-    if (!/\/rest\/|\/auth\/|\/functions\//.test(url)) return;
+    if (!/\/v1\/|\/api\//.test(url)) return;
     let body = '';
     try { body = (await r.text()).slice(0, 300); } catch { body = '<unreadable>'; }
     responses.push(`${status} ${r.request().method()} ${url} ${body}`);
@@ -48,12 +45,10 @@ async function login(page: Page, role: Role) {
   const account = credentials[role]();
   test.skip(!account.email || !account.password, `Missing Playwright credentials for ${role}.`);
   await page.goto('/login');
-  if (role === 'parent') await page.getByRole('button', { name: /iniciar sesi[oó]n como padre/i }).click();
-  if (role === 'admin') await page.getByRole('button', { name: /acceso de administraci[oó]n/i }).click();
   await page.locator('#login-email').fill(account.email!);
   await page.locator('#login-password').fill(account.password!);
   await page.getByRole('button', { name: /^iniciar sesi[oó]n$/i }).click();
-  await page.waitForURL(role === 'student' ? /\/menu$/ : role === 'parent' ? /\/parent\/family$/ : /\/admin(?:\/)?$/);
+  await page.waitForURL(role === 'student' ? /\/menu$/ : role === 'parent' ? /\/parent\/family$/ : role === 'staff' ? /\/staff(?:\/)?$/ : /\/admin(?:\/)?$/);
 }
 
 async function healthy(page: Page, state: Awaited<ReturnType<typeof monitor>>) {
@@ -118,6 +113,15 @@ test.describe('critical functional flows', () => {
     await healthy(page, state);
   });
 
+  test('staff operational interface is reachable and healthy', async ({ page }) => {
+    const state = await monitor(page);
+    await login(page, 'staff');
+    for (const path of ['/staff', '/staff/features', '/staff/orders', '/staff/verification']) {
+      await page.goto(path);
+      await healthy(page, state);
+    }
+  });
+
   test('admin feature center has unique functional destinations', async ({ page }) => {
     const state = await monitor(page);
     await login(page, 'admin');
@@ -149,9 +153,9 @@ test.describe('critical functional flows', () => {
     for (const path of ['/admin/system', '/admin/reset', '/admin/payments', '/admin/wallet', '/admin/inventory', '/admin/menu', '/admin/verification', '/admin/users', '/admin/loyalty', '/admin/reports', '/admin/history']) { await page.goto(path); await healthy(page, state); }
   });
 
-  test('unauthenticated users cannot enter protected student, parent and admin surfaces', async ({ page }) => {
+  test('unauthenticated users cannot enter protected student, parent, staff and admin surfaces', async ({ page }) => {
     const state = await monitor(page);
-    for (const path of ['/menu', '/student/wallet', '/student/history', '/student/features', '/parent/family', '/admin', '/admin/features', '/admin/users']) {
+    for (const path of ['/menu', '/student/wallet', '/student/history', '/student/features', '/parent/family', '/staff', '/staff/features', '/staff/orders', '/staff/verification', '/admin', '/admin/features', '/admin/users']) {
       await page.goto(path);
       await expect(page).not.toHaveURL(new RegExp(`${path.replaceAll('/', '\\/')}$`));
     }
