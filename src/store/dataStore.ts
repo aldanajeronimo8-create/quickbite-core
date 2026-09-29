@@ -136,7 +136,7 @@ export const useDataStore = create<DataState>((set, get) => ({
   addUser: async (user) => { await quickbiteApi().createInternalUser(user); },
   updateUser: async (user) => { await quickbiteApi().updateAdminUser(user); },
   updateProtectedCredentials: async (user) => { await quickbiteApi().updateProtectedCredentials(user); },
-  deleteUser: async (id) => { throw new Error('La eliminación de usuarios requiere una acción administrativa específica.'); },
+  deleteUser: async () => { throw new Error('La eliminación de usuarios requiere una acción administrativa específica.'); },
 
   getProductsByCategory: (categoryId) => {
     const visible = get().products.filter((product) => product.available && product.stock > 0);
