@@ -8,6 +8,10 @@ import { AdminProtectedDataGate } from './components/AdminProtectedDataGate';
 import { RoleProtectedRoute } from './components/RoleProtectedRoute';
 import { AuthRedirect } from './components/AuthRedirect';
 import { LoginPage } from './pages/LoginPage';
+import { FirebaseOnboardingPage } from './pages/FirebaseOnboardingPage';
+import { PrivacyPage } from './pages/PrivacyPage';
+import { DataRightsPage } from './pages/DataRightsPage';
+import { TermsPage } from './pages/TermsPage';
 import { SetupWizardPage } from './pages/SetupWizardPage';
 import { QuickBiteLogo } from './components/brand/QuickBiteLogo';
 import { StudentFeatureCenter } from './pages/student/StudentFeatureCenter';
@@ -39,6 +43,7 @@ function lazyPage(Component:ComponentType){return <Suspense fallback={<PageLoade
 export const router=createBrowserRouter([
  {path:'/',element:<LoginPage/>},{path:'/login',element:<LoginPage/>},
  {path:'/register-student',element:lazyPage(AccountTypeChoicePage)},{path:'/register-student/form',element:lazyPage(StudentRegisterPage)},{path:'/register-parent',element:lazyPage(ParentRegisterPage)},
+ {path:'/privacy',element:<PrivacyPage/>},{path:'/data-rights',element:<DataRightsPage/>},{path:'/terms',element:<TermsPage/>},{path:'/firebase/onboarding',element:<FirebaseOnboardingPage/>},
  {path:'/parent/family',element:<RoleProtectedRoute role="parent"><CoreParentFeaturePage/></RoleProtectedRoute>},{path:'/parent/food-controls',element:<RoleProtectedRoute role="parent"><CoreParentFeaturePage/></RoleProtectedRoute>},{path:'/parent/wellbeing',element:<RoleProtectedRoute role="parent"><CoreParentFeaturePage/></RoleProtectedRoute>},
  {path:'/verify-order',element:<CoreOrderVerificationPage/>},
  {path:'/menu',element:<RoleProtectedRoute role="student"><StudentExperienceLayout/></RoleProtectedRoute>},
