@@ -36,7 +36,11 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID as string | undefined,
 };
 
-export function getFirebaseGoogleConfig() {\n  return { ...firebaseConfig };\n}\n\nexport function isFirebaseGoogleConfigured() {
+export function getFirebaseGoogleConfig() {
+  return { ...firebaseConfig };
+}
+
+export function isFirebaseGoogleConfigured() {
   return enabled && Boolean(
     firebaseConfig.apiKey &&
     firebaseConfig.authDomain &&
