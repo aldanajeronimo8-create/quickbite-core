@@ -1,1 +1,1 @@
-export { AdminUsersSeparated as AdminUsers } from './AdminUsersSeparated';
+export { CoreAdminUsersPage as AdminUsers } from './CoreAdminUsersPage';
