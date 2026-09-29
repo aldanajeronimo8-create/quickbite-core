@@ -40,7 +40,7 @@ export function StaffOrdersPage() {
   useEffect(() => { void loadOrders(); }, []);
 
   const advance = async (order: ApiOrder) => {
-    const status = nextStatus[order.status];
+    const status: ApiOrder['status'] | undefined = nextStatus[order.status];
     if (!status || busy) return;
     setBusy(order.id);
     try {
