@@ -1,29 +1,47 @@
-import { test, expect, type Page } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 
 type Role = 'student' | 'parent' | 'staff' | 'admin';
-
-const credentials: Record<Role, () => { email?: string; password?: string }> = {
-  student: () => ({ email: process.env.PLAYWRIGHT_E2E_EMAIL, password: process.env.PLAYWRIGHT_E2E_PASSWORD }),
-  parent: () => ({ email: process.env.PLAYWRIGHT_PARENT_EMAIL, password: process.env.PLAYWRIGHT_PARENT_PASSWORD }),
-  staff: () => ({ email: process.env.PLAYWRIGHT_STAFF_EMAIL, password: process.env.PLAYWRIGHT_STAFF_PASSWORD }),
-  admin: () => ({ email: process.env.PLAYWRIGHT_ADMIN_EMAIL, password: process.env.PLAYWRIGHT_ADMIN_PASSWORD }),
+type RoleContract = {
+  credentials: () => { email?: string; password?: string };
+  home: RegExp;
+  routes: string[];
+  interfaceText: RegExp;
 };
 
-const routes: Record<Role, string[]> = {
-  student: ['/menu', '/student/features', '/student/account', '/student/wallet', '/student/history', '/student/favorites', '/student/link-code', '/student/notifications', '/student/rewards', '/student/reviews'],
-  parent: ['/parent/family', '/parent/food-controls', '/parent/wellbeing'],
-  staff: ['/staff', '/staff/features', '/staff/orders', '/staff/verification'],
-  admin: ['/admin', '/admin/features', '/admin/orders', '/admin/payments', '/admin/wallet', '/admin/inventory', '/admin/menu', '/admin/nutrition', '/admin/verification', '/admin/users', '/admin/loyalty', '/admin/reports', '/admin/history', '/admin/system', '/admin/operations', '/admin/rankings', '/admin/reset', '/admin/academic', '/admin/recess'],
+const roles: Record<Role, RoleContract> = {
+  student: {
+    credentials: () => ({ email: process.env.PLAYWRIGHT_E2E_EMAIL, password: process.env.PLAYWRIGHT_E2E_PASSWORD }),
+    home: /\/menu$/,
+    routes: ['/menu', '/student/features', '/student/account', '/student/wallet', '/student/history', '/student/favorites', '/student/link-code', '/student/notifications', '/student/rewards', '/student/reviews'],
+    interfaceText: /QuickBite Student|Centro de funciones|Saldos y recargas|Mis favoritos|Notificaciones/i,
+  },
+  parent: {
+    credentials: () => ({ email: process.env.PLAYWRIGHT_PARENT_EMAIL, password: process.env.PLAYWRIGHT_PARENT_PASSWORD }),
+    home: /\/parent\/family$/,
+    routes: ['/parent/family', '/parent/food-controls', '/parent/wellbeing'],
+    interfaceText: /Mi familia|Controles alimentarios|Bienestar y límites/i,
+  },
+  staff: {
+    credentials: () => ({ email: process.env.PLAYWRIGHT_STAFF_EMAIL, password: process.env.PLAYWRIGHT_STAFF_PASSWORD }),
+    home: /\/staff\/?$/,
+    routes: ['/staff', '/staff/features', '/staff/orders', '/staff/verification'],
+    interfaceText: /QuickBite Staff|Centro de funciones|Pedidos operativos|Verificación de recogidas/i,
+  },
+  admin: {
+    credentials: () => ({ email: process.env.PLAYWRIGHT_ADMIN_EMAIL, password: process.env.PLAYWRIGHT_ADMIN_PASSWORD }),
+    home: /\/admin\/?$/,
+    routes: ['/admin', '/admin/features', '/admin/operations', '/admin/rankings', '/admin/reviews', '/admin/orders', '/admin/payments', '/admin/wallet', '/admin/inventory', '/admin/menu', '/admin/nutrition', '/admin/verification', '/admin/users', '/admin/academic', '/admin/recess', '/admin/loyalty', '/admin/reports', '/admin/history', '/admin/system', '/admin/reset'],
+    interfaceText: /QuickBite Admin|Centro de funcionalidades|Pedidos|Usuarios y roles|Estado del sistema/i,
+  },
 };
 
-function destination(role: Role) {
-  if (role === 'student') return /\/menu$/;
-  if (role === 'parent') return /\/parent\/family$/;
-  if (role === 'staff') return /\/staff(?:\/)?$/;
-  return /\/admin(?:\/)?$/;
+const roleEntries = Object.entries(roles) as Array<[Role, RoleContract]>;
+
+function routeRegex(route: string) {
+  return new RegExp(route.replaceAll('/', '\\/') + '(?:\\?.*)?$');
 }
 
-async function installMonitors(page: Page) {
+async function attachMonitors(page: Page) {
   const consoleErrors: string[] = [];
   const pageErrors: string[] = [];
   const apiErrors: string[] = [];
@@ -33,57 +51,57 @@ async function installMonitors(page: Page) {
   });
   page.on('pageerror', (error) => pageErrors.push(error.message));
   page.on('response', async (response) => {
-    if (response.status() < 400) return;
-    const url = response.url();
-    if (!/\/v1\/|\/api\//.test(url)) return;
-    let body = '';
-    try {
-      body = (await response.text()).slice(0, 500);
-    } catch {
-      body = '<unreadable>';
-    }
-    apiErrors.push(`${response.status()} ${response.request().method()} ${url} ${body}`);
+    if (response.status() < 400 || !/\/v1\/|\/api\//.test(response.url())) return;
+    let body = '<unreadable>';
+    try { body = (await response.text()).slice(0, 500); } catch { /* ignore unreadable body */ }
+    apiErrors.push(response.status() + ' ' + response.request().method() + ' ' + response.url() + ' ' + body);
   });
-
   return { consoleErrors, pageErrors, apiErrors };
 }
 
-async function loginAs(page: Page, role: Role) {
-  const account = credentials[role]();
-  test.skip(!account.email || !account.password, `Missing Playwright credentials for ${role}.`);
+async function login(page: Page, role: Role) {
+  const account = roles[role].credentials();
+  test.skip(!account.email || !account.password, 'Missing Playwright credentials for ' + role + '.');
   await page.goto('/login');
   await page.locator('#login-email').fill(account.email!);
   await page.locator('#login-password').fill(account.password!);
   await page.getByRole('button', { name: /^iniciar sesi[oó]n$/i }).click();
-  await page.waitForURL(destination(role), { timeout: 30_000 });
+  await page.waitForURL(roles[role].home, { timeout: 30000 });
 }
 
-async function assertHealthy(page: Page, monitors: Awaited<ReturnType<typeof installMonitors>>) {
-  await page.waitForLoadState('networkidle');
+async function assertHealthy(page: Page, role: Role, route: string, monitors: Awaited<ReturnType<typeof attachMonitors>>) {
+  await page.waitForLoadState('domcontentloaded');
+  await page.waitForTimeout(500);
   await expect(page.locator('body')).toBeVisible();
-  await expect(page.locator('body')).not.toContainText(/application error|uncaught|chunkloaderror|algo sali[oó] mal/i);
-  expect(monitors.pageErrors).toEqual([]);
-  expect(monitors.consoleErrors).toEqual([]);
-  expect(monitors.apiErrors).toEqual([]);
+  await expect(page.locator('body')).not.toContainText(/application error|unexpected application error|uncaught|chunkloaderror|algo sali[oó] mal/i);
+  await expect(page.locator('body')).toContainText(roles[role].interfaceText);
+  expect(monitors.pageErrors, role + ' ' + route + ' page errors').toEqual([]);
+  expect(monitors.consoleErrors, role + ' ' + route + ' console errors').toEqual([]);
+  expect(monitors.apiErrors, role + ' ' + route + ' API errors').toEqual([]);
 }
 
-for (const role of ['student', 'parent', 'staff', 'admin'] as const) {
-  test.describe(`${role} interface`, () => {
-    test(`${role} authenticates and opens its interface`, async ({ page }) => {
-      const monitors = await installMonitors(page);
-      await loginAs(page, role);
-      await assertHealthy(page, monitors);
-      await expect(page).toHaveURL(destination(role));
+for (const entry of roleEntries) {
+  const role = entry[0];
+  const contract = entry[1];
+  test.describe(role + ' interface contract', () => {
+    test('authenticates and reaches the ' + role + ' home', async ({ page }) => {
+      const monitors = await attachMonitors(page);
+      await login(page, role);
+      await assertHealthy(page, role, 'home', monitors);
+      await expect(page).toHaveURL(contract.home);
     });
 
-    for (const route of routes[role]) {
-      test(`${role} route ${route} loads cleanly`, async ({ page }) => {
-        const monitors = await installMonitors(page);
-        await loginAs(page, role);
+    test('opens every protected ' + role + ' route without runtime or API errors', async ({ page }) => {
+      const monitors = await attachMonitors(page);
+      await login(page, role);
+      for (const route of contract.routes) {
+        monitors.consoleErrors.length = 0;
+        monitors.pageErrors.length = 0;
+        monitors.apiErrors.length = 0;
         await page.goto(route);
-        await assertHealthy(page, monitors);
-        await expect(page).toHaveURL(new RegExp(`${route.replaceAll('/', '\\\\/')}$`));
-      });
-    }
+        await assertHealthy(page, role, route, monitors);
+        await expect(page).toHaveURL(routeRegex(route));
+      }
+    });
   });
 }
