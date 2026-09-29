@@ -23,10 +23,8 @@ async function main() {
   if (!isConfirmed) throw new Error('Falta --confirm-restore. No se ejecutó ninguna restauración.');
 
   const backupFile = resolve(backupInput);
-  const target = new URL(databaseUrl);
-  const isSupabaseProductionHost = /supabase\.co$/i.test(target.hostname);
-  if (isSupabaseProductionHost && !allowProduction) {
-    throw new Error('La restauración hacia Supabase exige --allow-production. Prueba primero en una base de recuperación.');
+  if (!allowProduction && process.env.QUICKBITE_ALLOW_PRODUCTION_RESTORE !== 'true') {
+    throw new Error('La restauración de producción exige --allow-production o QUICKBITE_ALLOW_PRODUCTION_RESTORE=true. Prueba primero en una base de recuperación.');
   }
 
   const requiredPhrase = `RESTORE ${basename(backupFile)}`;
