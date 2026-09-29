@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Order } from '../lib/supabase';
+import type { Order } from '../types/domain';
 import { buildActiveSalesWorkbook } from './orderExportService';
 
 const order = {
