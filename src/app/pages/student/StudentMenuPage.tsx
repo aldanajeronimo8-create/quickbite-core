@@ -18,6 +18,7 @@ import { canAccessStudent } from '../../../lib/access';
 import { QuickBiteLogo } from '../../components/brand/QuickBiteLogo';
 import { useStudentContextStore } from '../../../store/studentContextStore';
 import { useAuthStore } from '../../../store/authStore';
+import { quickbiteApi } from '../../../services/api/quickbiteApi';
 
 type Tab = 'menu' | 'orders' | 'rewards';
 type PayStep = 'cart' | 'payment' | 'receipt';
@@ -94,29 +95,66 @@ export function StudentMenuPage() {
     async function initializeStudentSession() {
       try {
         if (!authUser) { navigate('/login', { replace: true }); return; }
-        const effectiveStudentId = activeStudent?.id ?? authUser.id;
-        const { data: profile, error } = await requireSupabaseClient().from('profiles').select('id,email,full_name,role,ti').eq('id', effectiveStudentId).maybeSingle();
-        if (error) throw error;
-        if (!profile || (!activeStudent && !canAccessStudent(profile.role))) {
-          if (!activeStudent) await signOut();
-          navigate('/login', { replace: true });
-          return;
+
+        // Parent delegation still uses the legacy acting-student bridge.
+        // A normal student session must stay entirely on Core API and must
+        // never require the Supabase first-run setup wizard.
+        if (activeStudent) {
+          const effectiveStudentId = activeStudent.id;
+          const { data: profile, error } = await requireSupabaseClient()
+            .from('profiles')
+            .select('id,email,full_name,role,ti')
+            .eq('id', effectiveStudentId)
+            .maybeSingle();
+          if (error) throw error;
+          if (!profile || !canAccessStudent(profile.role)) {
+            await signOut();
+            navigate('/login', { replace: true });
+            return;
+          }
+          const { data: wallet } = await requireSupabaseClient()
+            .from('wallet_accounts')
+            .select('balance')
+            .eq('user_id', effectiveStudentId)
+            .maybeSingle();
+          if (active) {
+            setStudent({ id: profile.id, name: profile.full_name, grade: profile.ti ?? '', email: profile.email });
+            setWalletBalance(Number(wallet?.balance ?? 0));
+          }
+        } else {
+          const { user } = await quickbiteApi().me();
+          if (user.role !== 'student') {
+            navigate('/login', { replace: true });
+            return;
+          }
+          if (active) {
+            setStudent({
+              id: user.id,
+              name: user.fullName,
+              grade: user.grade ?? user.course ?? '',
+              email: user.email,
+            });
+            // Core currently does not expose a wallet endpoint. Keep the
+            // balance at zero instead of forcing the legacy Supabase setup.
+            setWalletBalance(0);
+          }
         }
-        const { data: wallet, error: walletError } = await requireSupabaseClient().from('wallet_accounts').select('balance').eq('user_id', effectiveStudentId).maybeSingle();
-        if (walletError) throw walletError;
-        if (active) {
-          setStudent({ id: profile.id, name: profile.full_name, grade: profile.ti ?? '', email: profile.email });
-          setWalletBalance(Number(wallet?.balance ?? 0));
-        }
+
         await loadData();
       } catch (error) {
-        toast.error(error instanceof Error ? error.message : 'No se pudo cargar tu sesión');
-        navigate('/setup');
+        const message = error instanceof Error ? error.message : 'No se pudo cargar tu sesión';
+        toast.error(message);
+        // A missing Supabase configuration is not a production setup error.
+        // The Core API session remains authoritative for normal students.
+        if (/session_expired|missing_session|401|403/i.test(message)) {
+          await signOut();
+          navigate('/login', { replace: true });
+        }
       }
     }
     void initializeStudentSession();
     return () => { active = false; };
-  }, [activeStudent, loadData, navigate]);
+  }, [activeStudent, authUser, loadData, navigate, signOut]);
 
   useEffect(() => {
     if (!student) return;
