@@ -300,11 +300,10 @@ export function StudentMenuPage() {
       // receipt or keep the checkout UI in a processing state.
       void (async () => {
         try {
-            .from('wallet_accounts')
-            .select('balance')
-            .eq('user_id', student.id)
-            .maybeSingle();
-          setWalletBalance(Number(wallet?.balance ?? 0));
+          if (paymentMethod === 'credits') {
+            const wallet = await quickbiteApi().wallet();
+            setWalletBalance(Number(wallet.balance ?? 0));
+          }
         } catch {
           // The order is already committed; a stale wallet value is preferable
           // to making the buyer wait or treating the purchase as failed.
