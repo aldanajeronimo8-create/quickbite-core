@@ -18,6 +18,29 @@ ALTER TABLE quickbite.orders ADD COLUMN IF NOT EXISTS student_comment text;
 UPDATE quickbite.orders SET order_number = pickup_code WHERE order_number IS NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS orders_order_number_uq ON quickbite.orders(order_number);
 
+CREATE TABLE IF NOT EXISTS quickbite.pickup_slots (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  name text NOT NULL,
+  starts_at time NOT NULL,
+  ends_at time NOT NULL,
+  enabled boolean NOT NULL DEFAULT true,
+  max_orders integer,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  CHECK(starts_at < ends_at),
+  CHECK(max_orders IS NULL OR max_orders > 0)
+);
+ALTER TABLE quickbite.orders ADD COLUMN IF NOT EXISTS pickup_slot_id uuid;
+DO $ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='orders_pickup_slot_id_fkey') THEN ALTER TABLE quickbite.orders ADD CONSTRAINT orders_pickup_slot_id_fkey FOREIGN KEY (pickup_slot_id) REFERENCES quickbite.pickup_slots(id) ON DELETE RESTRICT; END IF; END $;
+CREATE INDEX IF NOT EXISTS pickup_slots_time_idx ON quickbite.pickup_slots(enabled,starts_at,ends_at);
+CREATE INDEX IF NOT EXISTS orders_pickup_slot_created_idx ON quickbite.orders(pickup_slot_id,created_at DESC);
+CREATE TABLE IF NOT EXISTS quickbite.order_window_settings (
+  id boolean PRIMARY KEY DEFAULT true CHECK(id),
+  enabled boolean NOT NULL DEFAULT true,
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+INSERT INTO quickbite.order_window_settings(id,enabled) VALUES(true,true) ON CONFLICT(id) DO NOTHING;
+
 CREATE TABLE IF NOT EXISTS quickbite.wallet_transactions (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id uuid NOT NULL REFERENCES quickbite.users(id) ON DELETE CASCADE,
@@ -215,7 +238,8 @@ CREATE TABLE IF NOT EXISTS quickbite.system_audit_logs (
 );
 CREATE INDEX IF NOT EXISTS system_audit_logs_created_idx ON quickbite.system_audit_logs(created_at DESC);
 
-CREATE OR REPLACE VIEW quickbite.v_menu AS
+DROP VIEW IF EXISTS quickbite.v_menu;
+CREATE VIEW quickbite.v_menu AS
 SELECT p.id,p.name,p.description,p.price,p.category_id,c.name AS category_name,p.image_url,p.available,i.quantity AS stock
 FROM quickbite.products p
 JOIN quickbite.inventory i ON i.product_id=p.id
