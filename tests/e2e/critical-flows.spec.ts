@@ -9,10 +9,6 @@ const credentials: Record<Role, () => { email?: string; password?: string }> = {
   admin: () => ({ email: process.env.PLAYWRIGHT_ADMIN_EMAIL, password: process.env.PLAYWRIGHT_ADMIN_PASSWORD }),
 };
 
-function isExpectedUnauthenticatedAuthResponse(_response: { status: () => number; url: () => string; request: () => { method: () => string } }) {
-  return false;
-}
-
 async function monitor(page: Page) {
   const errors: string[] = [];
   const responses: string[] = [];
@@ -22,7 +18,7 @@ async function monitor(page: Page) {
     const status = r.status();
     const url = r.url();
 
-    if (status < 400 || isExpectedUnauthenticatedAuthResponse(r)) return;
+    if (status < 400) return;
     if (!/\/v1\/|\/api\//.test(url)) return;
     let body = '';
     try { body = (await r.text()).slice(0, 300); } catch { body = '<unreadable>'; }
