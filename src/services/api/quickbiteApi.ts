@@ -173,6 +173,7 @@ export class QuickBiteApi {
   archiveOrders(ids: string[]) { return this.request<{ count: number }>('/v1/admin/orders/archive', { method: 'POST', body: JSON.stringify({ ids }) }); }
   deleteOrder(orderId: string) { return this.request<{ status: string }>('/v1/admin/orders/' + orderId, { method: 'DELETE' }); }
   resetPeriod(confirmation: string) { return this.request<{ status: string }>('/v1/admin/reset', { method: 'POST', body: JSON.stringify({ confirmation }) }); }
+  verifyPublicOrder(code: string) { return this.request<{ order: ApiOrder }>('/v1/order/verify?code=' + encodeURIComponent(code), {}, false); }
   verifyPickup(code: string) { return this.request<{ valid: boolean; alreadyDelivered?: boolean; order?: ApiOrder }>('/v1/staff/pickup/verify', { method: 'POST', body: JSON.stringify({ code }) }); }
   createOrder(items: Array<{ productId: string; quantity: number }>, paymentMethod: string, idempotencyKey: string, beneficiaryUserId?: string, comment?: string) {
     return this.request<{ order: ApiOrder }>('/v1/orders', { method: 'POST', body: JSON.stringify({ items: items.map(({ productId, quantity }) => ({ product_id: productId, quantity })), paymentMethod, idempotencyKey, beneficiaryUserId, comment }) });
