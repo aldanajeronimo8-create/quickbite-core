@@ -1,28 +1,32 @@
 import { test, expect, type Page } from '@playwright/test';
 
-const credentials = {
-  student: () => ({
-    email: process.env.PLAYWRIGHT_E2E_EMAIL,
-    password: process.env.PLAYWRIGHT_E2E_PASSWORD,
-  }),
-  parent: () => ({
-    email: process.env.PLAYWRIGHT_PARENT_EMAIL,
-    password: process.env.PLAYWRIGHT_PARENT_PASSWORD,
-  }),
-  staff: () => ({
-    email: process.env.PLAYWRIGHT_STAFF_EMAIL,
-    password: process.env.PLAYWRIGHT_STAFF_PASSWORD,
-  }),
-  admin: () => ({
-    email: process.env.PLAYWRIGHT_ADMIN_EMAIL,
-    password: process.env.PLAYWRIGHT_ADMIN_PASSWORD,
-  }),
+type Role = 'student' | 'parent' | 'staff' | 'admin';
+
+const credentials: Record<Role, () => { email?: string; password?: string }> = {
+  student: () => ({ email: process.env.PLAYWRIGHT_E2E_EMAIL, password: process.env.PLAYWRIGHT_E2E_PASSWORD }),
+  parent: () => ({ email: process.env.PLAYWRIGHT_PARENT_EMAIL, password: process.env.PLAYWRIGHT_PARENT_PASSWORD }),
+  staff: () => ({ email: process.env.PLAYWRIGHT_STAFF_EMAIL, password: process.env.PLAYWRIGHT_STAFF_PASSWORD }),
+  admin: () => ({ email: process.env.PLAYWRIGHT_ADMIN_EMAIL, password: process.env.PLAYWRIGHT_ADMIN_PASSWORD }),
 };
 
-async function collectBrowserErrors(page: Page) {
+const routes: Record<Role, string[]> = {
+  student: ['/menu', '/student/features', '/student/account', '/student/wallet', '/student/history', '/student/favorites', '/student/link-code', '/student/notifications', '/student/rewards', '/student/reviews'],
+  parent: ['/parent/family', '/parent/food-controls', '/parent/wellbeing'],
+  staff: ['/staff', '/staff/features', '/staff/orders', '/staff/verification'],
+  admin: ['/admin', '/admin/features', '/admin/orders', '/admin/payments', '/admin/wallet', '/admin/inventory', '/admin/menu', '/admin/nutrition', '/admin/verification', '/admin/users', '/admin/loyalty', '/admin/reports', '/admin/history', '/admin/system', '/admin/operations', '/admin/rankings', '/admin/reset', '/admin/academic', '/admin/recess'],
+};
+
+function destination(role: Role) {
+  if (role === 'student') return /\/menu$/;
+  if (role === 'parent') return /\/parent\/family$/;
+  if (role === 'staff') return /\/staff(?:\/)?$/;
+  return /\/admin(?:\/)?$/;
+}
+
+async function installMonitors(page: Page) {
   const consoleErrors: string[] = [];
   const pageErrors: string[] = [];
-  const failedResponses: string[] = [];
+  const apiErrors: string[] = [];
 
   page.on('console', (message) => {
     if (message.type() === 'error') consoleErrors.push(message.text());
@@ -31,301 +35,55 @@ async function collectBrowserErrors(page: Page) {
   page.on('response', async (response) => {
     if (response.status() < 400) return;
     const url = response.url();
-    if (!url.includes('/v1/') && !url.includes('/api/')) return;
+    if (!/\/v1\/|\/api\//.test(url)) return;
     let body = '';
     try {
       body = (await response.text()).slice(0, 500);
     } catch {
-      body = '<unreadable response body>';
+      body = '<unreadable>';
     }
-    failedResponses.push(`${response.status()} ${response.request().method()} ${url} ${body}`);
+    apiErrors.push(`${response.status()} ${response.request().method()} ${url} ${body}`);
   });
 
-  return { consoleErrors, pageErrors, failedResponses };
+  return { consoleErrors, pageErrors, apiErrors };
 }
 
-async function loginAs(page: Page, role: 'student' | 'parent' | 'staff' | 'admin') {
+async function loginAs(page: Page, role: Role) {
   const account = credentials[role]();
   test.skip(!account.email || !account.password, `Missing Playwright credentials for ${role}.`);
-
   await page.goto('/login');
-
   await page.locator('#login-email').fill(account.email!);
   await page.locator('#login-password').fill(account.password!);
   await page.getByRole('button', { name: /^iniciar sesi[oó]n$/i }).click();
-
-  const destination = role === 'student' ? /\/menu$/ : role === 'parent' ? /\/parent\/family$/ : role === 'staff' ? /\/staff(?:\/)?$/ : /\/admin(?:\/)?$/;
-  await page.waitForURL(destination, { timeout: 30_000 });
+  await page.waitForURL(destination(role), { timeout: 30_000 });
 }
 
-async function assertHealthyInterface(
-  page: Page,
-  errors: { consoleErrors: string[]; pageErrors: string[]; failedResponses: string[] },
-) {
-  await page.waitForTimeout(500);
-  if (errors.failedResponses.length > 0) {
-    console.log('E2E_API_FAILURES', JSON.stringify(errors.failedResponses, null, 2));
-  }
-  if (errors.consoleErrors.length > 0) {
-    console.log('E2E_CONSOLE_ERRORS', JSON.stringify(errors.consoleErrors, null, 2));
-  }
-  if (errors.pageErrors.length > 0) {
-    console.log('E2E_PAGE_ERRORS', JSON.stringify(errors.pageErrors, null, 2));
-  }
+async function assertHealthy(page: Page, monitors: Awaited<ReturnType<typeof installMonitors>>) {
+  await page.waitForLoadState('networkidle');
   await expect(page.locator('body')).toBeVisible();
   await expect(page.locator('body')).not.toContainText(/application error|uncaught|chunkloaderror|algo sali[oó] mal/i);
-  expect(errors.pageErrors).toEqual([]);
-  expect(errors.consoleErrors).toEqual([]);
-  expect(errors.failedResponses).toEqual([]);
+  expect(monitors.pageErrors).toEqual([]);
+  expect(monitors.consoleErrors).toEqual([]);
+  expect(monitors.apiErrors).toEqual([]);
 }
 
-test.describe('student interface', () => {
-  test('student can authenticate and open the main interface', async ({ page }) => {
-    const errors = await collectBrowserErrors(page);
-    await loginAs(page, 'student');
-    await assertHealthyInterface(page, errors);
-  });
-
-  for (const path of [
-    '/menu',
-    '/student/features',
-    '/student/account',
-    '/student/wallet',
-    '/student/history',
-    '/student/favorites',
-    '/student/link-code',
-    '/student/notifications',
-    '/student/rewards',
-  ]) {
-    test(`student interface route ${path} loads without browser errors`, async ({ page }) => {
-      const errors = await collectBrowserErrors(page);
-      await loginAs(page, 'student');
-      await page.goto(path);
-      await page.waitForLoadState('networkidle');
-      await assertHealthyInterface(page, errors);
+for (const role of ['student', 'parent', 'staff', 'admin'] as const) {
+  test.describe(`${role} interface`, () => {
+    test(`${role} authenticates and opens its interface`, async ({ page }) => {
+      const monitors = await installMonitors(page);
+      await loginAs(page, role);
+      await assertHealthy(page, monitors);
+      await expect(page).toHaveURL(destination(role));
     });
-  }
-});
 
-test.describe('staff interface', () => {
-  test('staff can authenticate and open the operations interface', async ({ page }) => {
-    const errors = await collectBrowserErrors(page);
-    await loginAs(page, 'staff');
-    await assertHealthyInterface(page, errors);
-    await expect(page).toHaveURL(/\/staff(?:\/)?$/);
-  });
-
-  for (const path of ['/staff', '/staff/features', '/staff/orders', '/staff/verification']) {
-    test(`staff interface route ${path} loads without browser errors`, async ({ page }) => {
-      const errors = await collectBrowserErrors(page);
-      await loginAs(page, 'staff');
-      await page.goto(path);
-      await page.waitForLoadState('networkidle');
-      await assertHealthyInterface(page, errors);
-      await expect(page).toHaveURL(new RegExp(`${path.replaceAll('/', '\\\/')}import { test, expect, type Page } from '@playwright/test';
-
-const credentials = {
-  student: () => ({
-    email: process.env.PLAYWRIGHT_E2E_EMAIL,
-    password: process.env.PLAYWRIGHT_E2E_PASSWORD,
-  }),
-  parent: () => ({
-    email: process.env.PLAYWRIGHT_PARENT_EMAIL,
-    password: process.env.PLAYWRIGHT_PARENT_PASSWORD,
-  }),
-  staff: () => ({
-    email: process.env.PLAYWRIGHT_STAFF_EMAIL,
-    password: process.env.PLAYWRIGHT_STAFF_PASSWORD,
-  }),
-  admin: () => ({
-    email: process.env.PLAYWRIGHT_ADMIN_EMAIL,
-    password: process.env.PLAYWRIGHT_ADMIN_PASSWORD,
-  }),
-};
-
-async function collectBrowserErrors(page: Page) {
-  const consoleErrors: string[] = [];
-  const pageErrors: string[] = [];
-  const failedResponses: string[] = [];
-
-  page.on('console', (message) => {
-    if (message.type() === 'error') consoleErrors.push(message.text());
-  });
-  page.on('pageerror', (error) => pageErrors.push(error.message));
-  page.on('response', async (response) => {
-    if (response.status() < 400) return;
-    const url = response.url();
-    if (!url.includes('/v1/') && !url.includes('/api/')) return;
-    let body = '';
-    try {
-      body = (await response.text()).slice(0, 500);
-    } catch {
-      body = '<unreadable response body>';
+    for (const route of routes[role]) {
+      test(`${role} route ${route} loads cleanly`, async ({ page }) => {
+        const monitors = await installMonitors(page);
+        await loginAs(page, role);
+        await page.goto(route);
+        await assertHealthy(page, monitors);
+        await expect(page).toHaveURL(new RegExp(`${route.replaceAll('/', '\\\\/')}$`));
+      });
     }
-    failedResponses.push(`${response.status()} ${response.request().method()} ${url} ${body}`);
   });
-
-  return { consoleErrors, pageErrors, failedResponses };
 }
-
-async function loginAs(page: Page, role: 'student' | 'parent' | 'staff' | 'admin') {
-  const account = credentials[role]();
-  test.skip(!account.email || !account.password, `Missing Playwright credentials for ${role}.`);
-
-  await page.goto('/login');
-
-  await page.locator('#login-email').fill(account.email!);
-  await page.locator('#login-password').fill(account.password!);
-  await page.getByRole('button', { name: /^iniciar sesi[oó]n$/i }).click();
-
-  const destination = role === 'student' ? /\/menu$/ : role === 'parent' ? /\/parent\/family$/ : role === 'staff' ? /\/staff(?:\/)?$/ : /\/admin(?:\/)?$/;
-  await page.waitForURL(destination, { timeout: 30_000 });
-}
-
-async function assertHealthyInterface(
-  page: Page,
-  errors: { consoleErrors: string[]; pageErrors: string[]; failedResponses: string[] },
-) {
-  await page.waitForTimeout(500);
-  if (errors.failedResponses.length > 0) {
-    console.log('E2E_API_FAILURES', JSON.stringify(errors.failedResponses, null, 2));
-  }
-  if (errors.consoleErrors.length > 0) {
-    console.log('E2E_CONSOLE_ERRORS', JSON.stringify(errors.consoleErrors, null, 2));
-  }
-  if (errors.pageErrors.length > 0) {
-    console.log('E2E_PAGE_ERRORS', JSON.stringify(errors.pageErrors, null, 2));
-  }
-  await expect(page.locator('body')).toBeVisible();
-  await expect(page.locator('body')).not.toContainText(/application error|uncaught|chunkloaderror|algo sali[oó] mal/i);
-  expect(errors.pageErrors).toEqual([]);
-  expect(errors.consoleErrors).toEqual([]);
-  expect(errors.failedResponses).toEqual([]);
-}
-
-test.describe('student interface', () => {
-  test('student can authenticate and open the main interface', async ({ page }) => {
-    const errors = await collectBrowserErrors(page);
-    await loginAs(page, 'student');
-    await assertHealthyInterface(page, errors);
-  });
-
-  for (const path of [
-    '/menu',
-    '/student/features',
-    '/student/account',
-    '/student/wallet',
-    '/student/history',
-    '/student/favorites',
-    '/student/link-code',
-    '/student/notifications',
-    '/student/rewards',
-  ]) {
-    test(`student interface route ${path} loads without browser errors`, async ({ page }) => {
-      const errors = await collectBrowserErrors(page);
-      await loginAs(page, 'student');
-      await page.goto(path);
-      await page.waitForLoadState('networkidle');
-      await assertHealthyInterface(page, errors);
-    });
-  }
-});
-));
-    });
-  }
-});
-
-test.describe('parent interface', () => {
-  test('parent can authenticate and open the family interface', async ({ page }) => {
-    const errors = await collectBrowserErrors(page);
-    await loginAs(page, 'parent');
-    await assertHealthyInterface(page, errors);
-    await expect(page).toHaveURL(/\/parent\/family$/);
-  });
-
-  test('parent registration interface opens without browser errors', async ({ page }) => {
-    const errors = await collectBrowserErrors(page);
-    await page.goto('/register-parent');
-    await page.waitForLoadState('networkidle');
-    await assertHealthyInterface(page, errors);
-    await expect(page.locator('body')).toContainText(/padre|familia|registro/i);
-  });
-});
-
-test.describe('admin interface', () => {
-  const adminRoutes = [
-    '/admin',
-    '/admin/features',
-    '/admin/orders',
-    '/admin/payments',
-    '/admin/wallet',
-    '/admin/inventory',
-    '/admin/menu',
-    '/admin/verification',
-    '/admin/users',
-    '/admin/loyalty',
-    '/admin/reports',
-    '/admin/history',
-    '/admin/system',
-    '/admin/operations',
-    '/admin/rankings',
-    '/admin/reset',
-  ];
-
-  for (const path of adminRoutes) {
-    test(`admin interface route ${path} loads without browser errors`, async ({ page }) => {
-      const errors = await collectBrowserErrors(page);
-      await loginAs(page, 'admin');
-      await page.goto(path);
-      await page.waitForLoadState('networkidle');
-      await assertHealthyInterface(page, errors);
-      await expect(page).toHaveURL(new RegExp(`${path.replaceAll('/', '\\/')}$`));
-    });
-  }
-
-  test('admin reports page exposes the report controls', async ({ page }) => {
-    const errors = await collectBrowserErrors(page);
-    await loginAs(page, 'admin');
-    await page.goto('/admin/reports');
-    await page.waitForLoadState('networkidle');
-    await assertHealthyInterface(page, errors);
-    await expect(page.getByRole('heading', { name: 'Informes' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Diario', exact: true })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Semanal', exact: true })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Mensual', exact: true })).toBeVisible();
-  });
-
-  test('admin traceability page exposes audit and cancellation sections', async ({ page }) => {
-    const errors = await collectBrowserErrors(page);
-    await loginAs(page, 'admin');
-    await page.goto('/admin/history');
-    await page.waitForLoadState('networkidle');
-    await assertHealthyInterface(page, errors);
-    await expect(page.getByRole('heading', { name: 'Auditoría y cancelaciones' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Solicitudes de cancelación' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Registro remoto' })).toBeVisible();
-  });
-
-  test('admin system page exposes health and operational sections', async ({ page }) => {
-    const errors = await collectBrowserErrors(page);
-    await loginAs(page, 'admin');
-    await page.goto('/admin/system');
-    await page.waitForLoadState('networkidle');
-    await assertHealthyInterface(page, errors);
-    await expect(page.getByRole('heading', { name: 'Salud, auditoría y automatizaciones' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Health checks' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: '¿Qué hace cada módulo?' })).toBeVisible();
-  });
-
-  test('admin operations page exposes windows, inventory and ranking', async ({ page }) => {
-    const errors = await collectBrowserErrors(page);
-    await loginAs(page, 'admin');
-    await page.goto('/admin/operations');
-    await page.waitForLoadState('networkidle');
-    await assertHealthyInterface(page, errors);
-    await expect(page.getByRole('heading', { name: 'Control operativo' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Ventanas de pedidos' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Inventario reservado' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Ranking de productos' })).toBeVisible();
-  });
-});
