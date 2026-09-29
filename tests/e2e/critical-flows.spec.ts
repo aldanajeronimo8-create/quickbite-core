@@ -30,7 +30,6 @@ async function monitor(page: Page) {
   });
   page.on('console', (m) => {
     if (m.type() !== 'error') return;
-    // Supabase intentionally returns 401 for /auth/v1/user when no session exists.
     if (/failed to load resource: the server responded with a status of 401 \(\)/i.test(m.text())) return;
     // Chromium reports some failed resource responses only as a generic console error.
     // API 409/4xx responses are still captured by the response handler above; a generic
