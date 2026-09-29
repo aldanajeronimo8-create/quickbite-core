@@ -1,55 +1,18 @@
 import { useEffect, useState } from 'react';
 import { Heart, Star } from 'lucide-react';
 import { toast } from 'sonner';
-import { requireSupabaseClient } from '../../../lib/supabase';
+import { quickbiteApi } from '../../../services/api/quickbiteApi';
+import { useAuthStore } from '../../../store/authStore';
 
 type RatingSummary = { average_stars: number; review_count: number };
 
 const cache = new Map<string, RatingSummary | null>();
 const pending = new Map<string, Promise<RatingSummary | null>>();
 
-async function loadRating(productId: string) {
-  if (cache.has(productId)) return cache.get(productId) ?? null;
-  if (pending.has(productId)) return pending.get(productId)!;
-
-  const request = (async () => {
-    try {
-      const { data, error } = await requireSupabaseClient()
-        .from('product_review_summary')
-        .select('average_stars,review_count')
-        .eq('product_id', productId)
-        .maybeSingle();
-      if (error) throw error;
-      const rating = data ? { average_stars: Number(data.average_stars ?? 0), review_count: Number(data.review_count ?? 0) } : null;
-      cache.set(productId, rating);
-      return rating;
-    } catch {
-      cache.set(productId, null);
-      return null;
-    } finally {
-      pending.delete(productId);
-    }
-  })();
-
-  pending.set(productId, request);
-  return request;
-}
-
-async function getEffectiveUserId() {
-  const client = requireSupabaseClient();
-  const { data: session, error: sessionError } = await client.auth.getSession();
-  if (sessionError) throw sessionError;
-  const authUserId = session.session?.user.id;
-  if (!authUserId) throw new Error('Sesión no disponible.');
-
-  try {
-    const { data, error } = await client.rpc('effective_student_user_id');
-    if (!error && typeof data === 'string' && data) return data;
-  } catch {
-    // Fall back to the authenticated user for regular student accounts.
-  }
-
-  return authUserId;
+async function loadRating(_productId: string) {
+  // Core does not yet expose product review summaries. Keep this optional
+  // decoration unavailable without making the product card depend on legacy data.
+  return null;
 }
 
 export function ProductRatingBadge({ productId }: { productId: string }) {
@@ -59,48 +22,25 @@ export function ProductRatingBadge({ productId }: { productId: string }) {
 
   useEffect(() => {
     let mounted = true;
-    void loadRating(productId).then((next) => { if (mounted) setRating(next); });
+    void quickbiteApi().favorites().then((result) => {
+      if (mounted) setIsFavorite(result.items.some((item) => item.product_id === productId));
+    }).catch(() => {
+      if (mounted) setIsFavorite(false);
+    });
     return () => { mounted = false; };
   }, [productId]);
 
-  useEffect(() => {
-    let mounted = true;
-    void (async () => {
-      try {
-        const client = requireSupabaseClient();
-        const userId = await getEffectiveUserId();
-        const { data, error } = await client
-          .from('favorites')
-          .select('product_id')
-          .eq('user_id', userId)
-          .eq('product_id', productId)
-          .limit(1);
-        if (error) throw error;
-        if (mounted) setIsFavorite((data ?? []).length > 0);
-      } catch {
-        if (mounted) setIsFavorite(false);
-      }
-    })();
-    return () => { mounted = false; };
-  }, [productId]);
 
   const toggleFavorite = async () => {
     if (savingFavorite) return;
     setSavingFavorite(true);
     try {
-      const client = requireSupabaseClient();
-      const userId = await getEffectiveUserId();
       if (isFavorite) {
-        const { error } = await client.from('favorites').delete().eq('user_id', userId).eq('product_id', productId);
-        if (error) throw error;
+        await quickbiteApi().removeFavorite(productId);
         setIsFavorite(false);
         toast.success('Quitado de favoritos.');
       } else {
-        const { error } = await client.from('favorites').upsert(
-          { user_id: userId, product_id: productId },
-          { onConflict: 'user_id,product_id', ignoreDuplicates: true },
-        );
-        if (error) throw error;
+        await quickbiteApi().addFavorite(productId);
         setIsFavorite(true);
         toast.success('Agregado a favoritos.');
       }
@@ -110,6 +50,7 @@ export function ProductRatingBadge({ productId }: { productId: string }) {
       setSavingFavorite(false);
     }
   };
+
 
   return <div className="flex items-center gap-2">
     <button
