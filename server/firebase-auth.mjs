@@ -28,7 +28,7 @@ async function getFirebaseCertificates() {
 }
 
 export async function verifyFirebaseGoogleIdToken(idToken) {
-  const projectId = String(process.env.FIREBASE_PROJECT_ID ?? 'quickbite-daf31').trim();
+  const projectId = String(process.env.FIREBASE_PROJECT_ID ?? '').trim();
   if (!projectId) throw new Error('firebase_not_configured');
 
   const parts = String(idToken ?? '').split('.');
