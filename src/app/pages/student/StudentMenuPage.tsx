@@ -4,7 +4,8 @@ import { toast } from 'sonner';
 import { QRCodeSVG } from 'qrcode.react';
 import { useDataStore } from '../../../store/dataStore';
 import { getErrorMessage } from '../../../lib/errorMessage';
-import { requireSupabaseClient, type LoyaltyRedemption, type LoyaltyReward, type Order, type Product } from '../../../lib/supabase';
+import type { Order, Product } from '../../../types/domain';
+import type { LoyaltyRedemption, LoyaltyReward } from '../../../types/loyalty';
 import { getOrderVerificationUrl } from '../../../lib/orderQr';
 import { UserNotificationBell } from '../../components/notifications/UserNotificationBell';
 import { ProductRatingBadge } from '../../components/student/ProductRatingBadge';
@@ -100,26 +101,9 @@ export function StudentMenuPage() {
         // A normal student session must stay entirely on Core API and must
         // never require the Supabase first-run setup wizard.
         if (activeStudent) {
-          const effectiveStudentId = activeStudent.id;
-          const { data: profile, error } = await requireSupabaseClient()
-            .from('profiles')
-            .select('id,email,full_name,role,ti')
-            .eq('id', effectiveStudentId)
-            .maybeSingle();
-          if (error) throw error;
-          if (!profile || !canAccessStudent(profile.role)) {
-            await signOut();
-            navigate('/login', { replace: true });
-            return;
-          }
-          const { data: wallet } = await requireSupabaseClient()
-            .from('wallet_accounts')
-            .select('balance')
-            .eq('user_id', effectiveStudentId)
-            .maybeSingle();
           if (active) {
-            setStudent({ id: profile.id, name: profile.full_name, grade: profile.ti ?? '', email: profile.email });
-            setWalletBalance(Number(wallet?.balance ?? 0));
+            setStudent({ id: activeStudent.id, name: activeStudent.full_name, grade: activeStudent.grade ?? '', email: activeStudent.email });
+            setWalletBalance(0);
           }
         } else {
           const { user } = await quickbiteApi().me();
@@ -134,9 +118,8 @@ export function StudentMenuPage() {
               grade: user.grade ?? user.course ?? '',
               email: user.email,
             });
-            // Core currently does not expose a wallet endpoint. Keep the
-            // balance at zero instead of forcing the legacy Supabase setup.
-            setWalletBalance(0);
+            const wallet = await quickbiteApi().wallet();
+            setWalletBalance(Number(wallet.balance ?? 0));
           }
         }
 
@@ -160,23 +143,9 @@ export function StudentMenuPage() {
     if (!student) return;
     let active = true;
     async function loadNutrition() {
-      try {
-        const { data, error } = await requireSupabaseClient()
-          .from('product_nutrition')
-          .select('product_id,calories,protein_g,carbohydrates_g,fat_g,fiber_g,ingredients,allergens,vegetarian,healthy_choice');
-        if (error) throw error;
-        if (!active) return;
-        const next: Record<string, ProductNutrition> = {};
-        (data ?? []).forEach((row) => {
-          next[row.product_id] = row as ProductNutrition;
-        });
-        setNutritionByProduct(next);
-      } catch (error) {
-        if (active) toast.error(getErrorMessage(error, 'No se pudo cargar la información nutricional.'));
-      }
+      if (active) setNutritionByProduct({});
     }
     void loadNutrition();
-    return () => { active = false; };
   }, [student]);
 
   const myOrders = useMemo(() => (student ? orders.filter((o) => o.user_id === student.id) : []), [orders, student]);
@@ -367,8 +336,6 @@ export function StudentMenuPage() {
   const handleLogout = async () => {
     if (activeStudent) {
       try {
-        const { error } = await requireSupabaseClient().rpc('clear_parent_active_student');
-        if (error) throw error;
         clearActiveStudent();
         navigate('/parent/family');
       } catch (error) {
