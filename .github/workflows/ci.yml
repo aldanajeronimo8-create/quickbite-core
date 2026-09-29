@@ -81,7 +81,7 @@ jobs:
         run: pnpm exec playwright install --with-deps chromium
 
       - name: Run first-run Playwright smoke test
-        run: pnpm exec playwright test tests/e2e/first-run.spec.ts
+        run: pnpm exec playwright test tests/e2e/first-run.spec.ts tests/e2e/navigation-and-access.spec.ts tests/e2e/role-interfaces.spec.ts tests/e2e/critical-flows.spec.ts
 
       - name: Upload Playwright report
         if: ${{ !cancelled() }}
