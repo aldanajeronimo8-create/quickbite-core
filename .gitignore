@@ -14,3 +14,7 @@ supabase/.temp/
 pnpm-workspace.yaml
 
 QuickBite-/
+
+# Build and framework caches
+.vite/
+.vercel/
