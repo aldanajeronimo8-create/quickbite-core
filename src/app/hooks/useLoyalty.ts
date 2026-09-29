@@ -45,10 +45,8 @@ export function useLoyalty(userId: string | undefined, _orders?: unknown) {
     if (!userId) return;
     void refresh();
 
-    const refreshDelay = Math.max(appConfig.dataRefreshIntervalMs, 15_000);
-    const interval = window.setInterval(() => void refresh(), refreshDelay);
     // Core API is the source of truth. Until loyalty realtime endpoints are exposed,
-    // refresh on a short interval rather than opening a legacy Supabase channel.
+    // refresh on a short interval rather than opening a legacy channel.
     const refreshDelay = Math.max(appConfig.dataRefreshIntervalMs, 15_000);
     const interval = window.setInterval(() => void refresh(), refreshDelay);
     return () => window.clearInterval(interval);
