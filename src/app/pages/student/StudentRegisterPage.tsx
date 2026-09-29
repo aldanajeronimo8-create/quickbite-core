@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import { useEffect, useState } from 'react';
 import { ArrowLeft, CreditCard, Eye, EyeOff, GraduationCap, Lock, ShieldCheck, User } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
