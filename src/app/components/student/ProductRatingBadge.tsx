@@ -8,10 +8,8 @@ type RatingSummary = { average_stars: number; review_count: number };
 const cache = new Map<string, RatingSummary | null>();
 const pending = new Map<string, Promise<RatingSummary | null>>();
 
-async function loadRating(_productId: string) {
-  // Core does not yet expose product review summaries. Keep this optional
-  // decoration unavailable without making the product card depend on legacy data.
-  return null;
+async function loadRating(productId: string) {
+  try { return (await quickbiteApi().productRating(productId)).rating; } catch { return null; }
 }
 
 export function ProductRatingBadge({ productId }: { productId: string }) {
@@ -21,6 +19,9 @@ export function ProductRatingBadge({ productId }: { productId: string }) {
 
   useEffect(() => {
     let mounted = true;
+    const ratingPromise = loadRating(productId).then((value) => { cache.set(productId, value); return value; });
+    pending.set(productId, ratingPromise);
+    void ratingPromise.then((value) => { if (mounted) setRating(value); }).finally(() => pending.delete(productId));
     void quickbiteApi().favorites().then((result) => {
       if (mounted) setIsFavorite(result.items.some((item) => item.product_id === productId));
     }).catch(() => {
