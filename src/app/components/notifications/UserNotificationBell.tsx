@@ -4,7 +4,6 @@ import { toast } from 'sonner';
 import { appConfig } from '../../../config/appConfig';
 import { getErrorMessage } from '../../../lib/errorMessage';
 import { requireSupabaseClient, type UserNotification } from '../../../lib/supabase';
-import { listUserNotifications, markUserNotificationsRead } from '../../../repositories/quickbiteRepository';
 
 function formatNotificationTime(value: string) {
   return new Intl.DateTimeFormat('es-CO', {
