@@ -122,5 +122,5 @@ jobs:
           if [[ -z "${QUICKBITE_ALERT_WEBHOOK_URL}" ]]; then exit 0; fi
           curl --fail --silent --show-error --max-time 15 --retry 2 \
             -H 'Content-Type: application/json' \
-            --data '{"text":"QuickBite: el backup de Supabase falló. Revisa el workflow de GitHub Actions."}' \
+            --data '{"text":"QuickBite: el backup de PostgreSQL falló. Revisa el workflow de GitHub Actions."}' \
             "${QUICKBITE_ALERT_WEBHOOK_URL}" || true
