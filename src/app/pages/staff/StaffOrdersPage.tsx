@@ -4,7 +4,8 @@ import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { quickbiteApi, type ApiOrder } from '../../../services/api/quickbiteApi';
 
-const statusLabel: Record<ApiOrder['status'], string> = {
+type OrderStatus='pending'|'preparing'|'ready'|'delivered'|'cancelled';
+const statusLabel: Record<OrderStatus, string> = {
   pending: 'Pendiente',
   preparing: 'Preparando',
   ready: 'Listo',
@@ -12,7 +13,7 @@ const statusLabel: Record<ApiOrder['status'], string> = {
   cancelled: 'Cancelado',
 };
 
-const nextStatus: Partial<Record<ApiOrder['status'], ApiOrder['status']>> = {
+const nextStatus: Partial<Record<OrderStatus, OrderStatus>> = {
   pending: 'preparing',
   preparing: 'ready',
   ready: 'delivered',
@@ -40,13 +41,13 @@ export function StaffOrdersPage() {
   useEffect(() => { void loadOrders(); }, []);
 
   const advance = async (order: ApiOrder) => {
-    const status: ApiOrder['status'] | undefined = nextStatus[order.status];
+    const status: OrderStatus | undefined = nextStatus[order.status as OrderStatus];
     if (!status || busy) return;
     setBusy(order.id);
     try {
       const result = await quickbiteApi().updateOrderStatus(order.id, status);
       setOrders((current) => current.map((item) => item.id === order.id ? result.order : item));
-      toast.success(`Pedido #${order.order_number ?? order.pickup_code}: ${statusLabel[status as ApiOrder['status']]}.`);
+      toast.success(`Pedido #${order.order_number ?? order.pickup_code}: ${statusLabel[status]}.`);
     } catch (cause) {
       toast.error(cause instanceof Error ? cause.message : 'No se pudo actualizar el pedido.');
     } finally {
