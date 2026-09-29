@@ -56,7 +56,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     # Keep pull-request CI reproducible and non-destructive: it must not need
-    # remote Supabase credentials or provision users in a shared environment.
+    # remote service credentials or provision users in a shared environment.
     env:
       CI: true
     steps:
