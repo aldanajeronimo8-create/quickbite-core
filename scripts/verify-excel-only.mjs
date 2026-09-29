@@ -3,7 +3,7 @@ import { readdir, readFile } from 'node:fs/promises';
 import { relative } from 'node:path';
 
 const root = new URL('..', import.meta.url);
-const roots = ['src', 'supabase', '.env.example', '.github/workflows', 'package.json'];
+const roots = ['src', 'server', 'api', 'scripts', '.env.example', '.github/workflows', 'package.json'];
 const forbidden = /google[\s_-]*sheets|GOOGLE_SHEETS_|export-google-sheets|google-apps-script/i;
 const allowedExtensions = new Set(['.ts', '.tsx', '.js', '.mjs', '.cjs', '.json', '.css', '.sql', '.yml', '.yaml', '.env']);
 
