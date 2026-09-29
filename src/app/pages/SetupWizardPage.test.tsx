@@ -28,9 +28,9 @@ describe('SetupWizardPage', () => {
       </VisualThemeProvider>,
     );
 
-    expect(screen.getByRole('heading', { name: /configuración inicial/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /configuración de QuickBite Core/i })).toBeInTheDocument();
     expect(screen.getByRole('img', { name: 'QuickBite' })).toBeInTheDocument();
-    expect(screen.getByText(/conectar un proyecto supabase existente/i)).toBeInTheDocument();
-    expect(screen.getByText(/VITE_SUPABASE_URL/i)).toBeInTheDocument();
+    expect(screen.getByText(/Firebase para autenticación/i)).toBeInTheDocument();
+    expect(screen.getByText(/VITE_FIREBASE_PROJECT_ID/i)).toBeInTheDocument();
   });
 });
