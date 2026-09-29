@@ -1,10 +1,11 @@
 import { test, expect, type Page } from '@playwright/test';
 
-type Role = 'student' | 'parent' | 'admin';
+type Role = 'student' | 'parent' | 'staff' | 'admin';
 
 const credentials: Record<Role, () => { email?: string; password?: string }> = {
   student: () => ({ email: process.env.PLAYWRIGHT_E2E_EMAIL, password: process.env.PLAYWRIGHT_E2E_PASSWORD }),
   parent: () => ({ email: process.env.PLAYWRIGHT_PARENT_EMAIL, password: process.env.PLAYWRIGHT_PARENT_PASSWORD }),
+  staff: () => ({ email: process.env.PLAYWRIGHT_STAFF_EMAIL, password: process.env.PLAYWRIGHT_STAFF_PASSWORD }),
   admin: () => ({ email: process.env.PLAYWRIGHT_ADMIN_EMAIL, password: process.env.PLAYWRIGHT_ADMIN_PASSWORD }),
 };
 
@@ -21,6 +22,7 @@ const routes: Record<Role, string[]> = {
     '/student/rewards',
   ],
   parent: ['/parent/family'],
+  staff: ['/staff', '/staff/features', '/staff/orders', '/staff/verification'],
   admin: [
     '/admin',
     '/admin/features',
@@ -59,12 +61,10 @@ async function loginAs(page: Page, role: Role) {
   test.skip(!account.email || !account.password, `Missing Playwright credentials for ${role}.`);
 
   await page.goto('/login');
-  if (role === 'parent') await page.getByRole('button', { name: /iniciar sesi[oó]n como padre/i }).click();
-  if (role === 'admin') await page.getByRole('button', { name: /acceso de administraci[oó]n/i }).click();
   await page.locator('#login-email').fill(account.email!);
   await page.locator('#login-password').fill(account.password!);
   await page.getByRole('button', { name: /^iniciar sesi[oó]n$/i }).click();
-  await page.waitForURL(role === 'student' ? /\/menu$/ : role === 'parent' ? /\/parent\/family$/ : /\/admin(?:\/)?$/);
+  await page.waitForURL(role === 'student' ? /\/menu$/ : role === 'parent' ? /\/parent\/family$/ : role === 'staff' ? /\/staff(?:\/)?$/ : /\/admin(?:\/)?$/);
 }
 
 async function assertNoRuntimeErrors(page: Page, label: string) {
@@ -104,7 +104,7 @@ async function installErrorMonitors(page: Page) {
   page.on('response', async (response) => {
     if (response.status() < 400) return;
     const url = response.url();
-    if (!/\/rest\/|\/auth\/|\/functions\//.test(url)) return;
+    if (!/\/v1\/|\/api\//.test(url)) return;
     let body = '';
     try {
       body = (await response.text()).slice(0, 250);
@@ -152,7 +152,7 @@ async function waitForInternalNavigation(page: Page, href: string, beforeUrl: st
 test.describe('interactive UI control audit', () => {
   test.describe.configure({ mode: 'serial' });
 
-  for (const role of ['student', 'parent', 'admin'] as const) {
+  for (const role of ['student', 'parent', 'staff', 'admin'] as const) {
     test(`${role}: every visible safe button responds without runtime/API errors`, async ({ page }) => {
       const monitors = await installErrorMonitors(page);
       await loginAs(page, role);
