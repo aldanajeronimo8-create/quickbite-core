@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Bell, CheckCheck, Inbox, LoaderCircle } from 'lucide-react';
 import { toast } from 'sonner';
-import { appConfig } from '../../../config/appConfig';
+import { quickbiteApi } from '../../../services/api/quickbiteApi';
 import { getErrorMessage } from '../../../lib/errorMessage';
-import { requireSupabaseClient, type UserNotification } from '../../../lib/supabase';
+import type { UserNotification } from '../../../lib/supabase';
 
 function formatNotificationTime(value: string) {
   return new Intl.DateTimeFormat('es-CO', {
@@ -26,15 +26,16 @@ export function UserNotificationBell({ userId }: { userId: string }) {
   const notificationRootRef = useRef<HTMLDivElement>(null);
 
   const loadNotifications = useCallback(async () => {
-    const items = await listUserNotifications(userId);
-    setNotifications(items);
+    const result = await quickbiteApi().notifications();
+    setNotifications(result.items as UserNotification[]);
   }, [userId]);
 
   useEffect(() => {
     let active = true;
     const load = async () => {
       try {
-        const items = await listUserNotifications(userId);
+        const result = await quickbiteApi().notifications();
+        const items = result.items as UserNotification[];
         if (active) setNotifications(items);
       } catch (error) {
         if (active) toast.error(getErrorMessage(error, 'No se pudieron cargar tus notificaciones.'));
@@ -45,38 +46,10 @@ export function UserNotificationBell({ userId }: { userId: string }) {
 
     void load();
 
-    if (!appConfig.supabaseRealtimeEnabled) {
-      const pollingDelay = Math.max(appConfig.dataRefreshIntervalMs, 10_000);
-      const interval = window.setInterval(() => void load(), pollingDelay);
-      return () => {
-        active = false;
-        window.clearInterval(interval);
-      };
-    }
-
-    const supabase = requireSupabaseClient();
-    const channel = supabase
-      .channel(`user-notifications-${userId}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` },
-        (payload) => {
-          const incoming = payload.new as Partial<UserNotification>;
-          if (payload.eventType === 'INSERT' && incoming.id && incoming.title && incoming.body) {
-            const notification = incoming as UserNotification;
-            if (isWalletTopUpNotification(notification)) return;
-            setNotifications((current) => [notification, ...current.filter((item) => item.id !== notification.id)]);
-            toast.info(notification.title, { description: notification.body });
-            return;
-          }
-          void load();
-        },
-      )
-      .subscribe();
-
+    const interval = window.setInterval(() => void load(), 15_000);
     return () => {
       active = false;
-      void supabase.removeChannel(channel);
+      window.clearInterval(interval);
     };
   }, [userId]);
 
@@ -119,7 +92,7 @@ export function UserNotificationBell({ userId }: { userId: string }) {
     setIsMarkingRead(true);
     setNotifications((current) => current.filter((item) => !ids.includes(item.id)));
     try {
-      await markUserNotificationsRead(ids);
+      await Promise.all(ids.map((id) => quickbiteApi().markNotificationRead(id)));
     } catch (error) {
       toast.error(getErrorMessage(error, 'No se pudieron actualizar tus notificaciones.'));
       await loadNotifications();
