@@ -1,8 +1,8 @@
 export type ApiRole = 'student' | 'parent' | 'staff' | 'admin';
 export type ApiUser = { id: string; email: string; role: ApiRole; roles: ApiRole[]; protected: boolean; fullName: string; sectionId?: string | null; gradeId?: string | null; courseId?: string | null; section?: string | null; grade?: string | null; course?: string | null };
 export type ApiSession = { accessToken: string; refreshToken: string; expiresIn: number; user: ApiUser };
-export type MenuItem = { id: string; name: string; description: string | null; price: number; category_id: string | null; category_name: string | null; stock: number };
-export type ApiOrder = { id: string; user_id: string; total: number; status: string; payment_status: string; payment_method: string; pickup_code: string; created_at: string };
+export type MenuItem = { id: string; name: string; description: string | null; price: number; category_id: string | null; category_name: string | null; stock: number; image_url?: string | null; available?: boolean };
+export type ApiOrder = { id: string; user_id: string; beneficiary_user_id?: string | null; total: number; status: string; payment_status: string; payment_method: string; pickup_code: string; order_number?: string; created_at: string; estimated_minutes?: number; payment_reference?: string | null; notes?: string | null; student_comment?: string | null; admin_hidden?: boolean; order_items?: Array<{ id: string; product_id: string; quantity: number; price: number; product?: unknown }> };
 
 type Fetcher = typeof fetch;
 const STORAGE_KEY = 'quickbite.core.session';
@@ -133,8 +133,46 @@ export class QuickBiteApi {
   updateAdminUser(input: { id: string; email: string; fullName: string; role?: ApiRole; password?: string }) { return this.request<{ user: ApiUser }>('/v1/admin/users/' + input.id, { method: 'PATCH', body: JSON.stringify(input) }); }
   createInternalUser(input: { email: string; fullName: string; role: 'staff' | 'admin'; password: string }) { return this.request<{ user: ApiUser }>('/v1/admin/users', { method: 'POST', body: JSON.stringify(input) }); }
   updateProtectedCredentials(input: { id: string; email: string; password?: string }) { return this.request<{ user: { id: string; email: string } }>('/v1/admin/users/' + input.id + '/protected-credentials', { method: 'POST', body: JSON.stringify(input) }); }
-  createOrder(items: Array<{ productId: string; quantity: number }>, paymentMethod: string, idempotencyKey: string) {
-    return this.request<{ order: ApiOrder }>('/v1/orders', { method: 'POST', body: JSON.stringify({ items: items.map(({ productId, quantity }) => ({ product_id: productId, quantity })), paymentMethod, idempotencyKey }) });
+  studentAccount() { return this.request<{ user: ApiUser; profilePreferences: { dietary_preferences?: string[]; allergies?: string | null; guardian_notes?: string | null }; consent: unknown; theme: string }>('/v1/student/account'); }
+  updateStudentAccount(input: { fullName?: string; dietaryPreferences?: string[]; allergies?: string | null; guardianNotes?: string | null }) { return this.request<{ user: ApiUser }>('/v1/student/account', { method: 'PATCH', body: JSON.stringify(input) }); }
+  studentLinkCode(forceNew = false) { return this.request<{ code: string; expires_at: string }>('/v1/student/link-code' + (forceNew ? '' : ''), { method: forceNew ? 'POST' : 'GET', body: forceNew ? '{}' : undefined }); }
+  studentFavorites() { return this.request<{ items: Array<{ id: string; product_id?: string; name: string; description: string | null; price: number; stock: number; image_url?: string | null; available?: boolean; category_name?: string | null; category_id?: string | null }> }>('/v1/student/favorites'); }
+  studentReviews() { return this.request<{ reviews: any[]; purchases: any[] }>('/v1/student/reviews'); }
+  submitReview(input: { orderId: string; productId: string; stars: number; comment?: string }) { return this.request<{ review: any }>('/v1/student/reviews', { method: 'POST', body: JSON.stringify(input) }); }
+  studentRewards() { return this.request<{ enabled: boolean; availablePoints: number; rewards: any[]; redemptions: any[] }>('/v1/student/rewards'); }
+  redeemReward(rewardId: string) { return this.request<{ redemption: any }>('/v1/student/rewards/' + rewardId + '/redeem', { method: 'POST' }); }
+  walletDetails() { return this.request<{ balance: number; transactions: any[]; topups: any[] }>('/v1/wallet/details'); }
+  requestWalletTopup(input: { amount: number; method: 'manual' | 'nequi' | 'bre-b'; reference?: string; comment?: string }) { return this.request<{ request: any }>('/v1/wallet/topups', { method: 'POST', body: JSON.stringify(input) }); }
+  parentFamily() { return this.request<{ items: any[] }>('/v1/parent/family'); }
+  linkParentFamily(code: string) { return this.request<{ status: string }>('/v1/parent/family/link', { method: 'POST', body: JSON.stringify({ code }) }); }
+  parentFoodControls(studentId: string) { return this.request<{ items: any[] }>('/v1/parent/food-controls?studentId=' + encodeURIComponent(studentId)); }
+  setParentFoodBlock(input: { studentId: string; productId: string; blocked: boolean; reason?: string }) { return this.request<{ blocked: boolean }>('/v1/parent/food-controls', { method: 'PUT', body: JSON.stringify(input) }); }
+  parentWellbeing(studentId: string) { return this.request<{ limits: any; spending: any; nutrition: any[] }>('/v1/parent/wellbeing?studentId=' + encodeURIComponent(studentId)); }
+  setParentSpendingLimits(input: { studentId: string; dailyLimit?: number | null; weeklyLimit?: number | null; monthlyLimit?: number | null }) { return this.request<{ limits: any }>('/v1/parent/wellbeing', { method: 'PUT', body: JSON.stringify(input) }); }
+  adminProducts() { return this.request<{ products: any[]; categories: any[] }>('/v1/admin/products'); }
+  createProduct(input: { name: string; description?: string; price: number; categoryId?: string | null; imageUrl?: string | null; stock?: number }) { return this.request<{ product: any }>('/v1/admin/products', { method: 'POST', body: JSON.stringify(input) }); }
+  updateProduct(id: string, input: any) { return this.request<{ product: any }>('/v1/admin/products/' + id, { method: 'PATCH', body: JSON.stringify(input) }); }
+  deleteProduct(id: string) { return this.request<{ status: string }>('/v1/admin/products/' + id, { method: 'DELETE' }); }
+  inventoryMovements() { return this.request<{ items: any[] }>('/v1/admin/inventory/movements'); }
+  adjustInventory(input: { productId: string; newStock: number; reason: string }) { return this.request<{ stock: number }>('/v1/admin/inventory/adjust', { method: 'POST', body: JSON.stringify(input) }); }
+  nutrition() { return this.request<{ items: any[] }>('/v1/admin/nutrition'); }
+  saveNutrition(input: any) { return this.request<{ item: any }>('/v1/admin/nutrition', { method: 'PUT', body: JSON.stringify(input) }); }
+  adminReviews() { return this.request<{ items: any[] }>('/v1/admin/reviews'); }
+  moderateReview(id: string, status: 'approved' | 'rejected' | 'pending') { return this.request<{ status: string }>('/v1/admin/reviews/' + id, { method: 'POST', body: JSON.stringify({ status }) }); }
+  adminLoyalty() { return this.request<{ settings: any; rewards: any[]; redemptions: any[] }>('/v1/admin/loyalty'); }
+  setLoyaltyEnabled(enabled: boolean) { return this.request<{ settings: any }>('/v1/admin/loyalty/settings', { method: 'PUT', body: JSON.stringify({ enabled }) }); }
+  adminWalletTopups() { return this.request<{ items: any[] }>('/v1/admin/wallet/topups'); }
+  moderateWalletTopup(id: string, action: 'approve' | 'reject', reason?: string) { return this.request<{ status: string }>('/v1/admin/wallet/topups/' + id, { method: 'POST', body: JSON.stringify({ action, reason }) }); }
+  adminCancellations() { return this.request<{ items: any[] }>('/v1/admin/cancellations'); }
+  reviewCancellation(id: string, approve: boolean, note?: string) { return this.request<{ status: string }>('/v1/admin/cancellations/' + id, { method: 'POST', body: JSON.stringify({ approve, note }) }); }
+  adminDashboard(days = 30) { return this.request<{ period_days: number; daily: any[] }>('/v1/admin/dashboard?days=' + days); }
+  adminReports(start: string, end: string) { return this.request<{ items: ApiOrder[] }>('/v1/admin/reports?start=' + encodeURIComponent(start) + '&end=' + encodeURIComponent(end)); }
+  adminHistory() { return this.request<{ audits: any[]; cancellations: any[] }>('/v1/admin/history'); }
+  adminSystem() { return this.request<{ health: any[]; audit_events: number; open_alerts: number }>('/v1/admin/system'); }
+  resetPeriod(confirmation: string) { return this.request<{ status: string }>('/v1/admin/reset', { method: 'POST', body: JSON.stringify({ confirmation }) }); }
+  verifyPickup(code: string) { return this.request<{ valid: boolean; alreadyDelivered?: boolean; order?: ApiOrder }>('/v1/staff/pickup/verify', { method: 'POST', body: JSON.stringify({ code }) }); }
+  createOrder(items: Array<{ productId: string; quantity: number }>, paymentMethod: string, idempotencyKey: string, beneficiaryUserId?: string, comment?: string) {
+    return this.request<{ order: ApiOrder }>('/v1/orders', { method: 'POST', body: JSON.stringify({ items: items.map(({ productId, quantity }) => ({ product_id: productId, quantity })), paymentMethod, idempotencyKey, beneficiaryUserId, comment }) });
   }
 }
 
