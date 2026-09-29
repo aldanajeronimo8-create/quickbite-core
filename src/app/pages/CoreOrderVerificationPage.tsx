@@ -1,9 +1,9 @@
 import { useEffect,useState } from 'react';
 import { CheckCircle2,Clock3,PackageCheck,XCircle } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
-import { quickbiteApi,type ApiOrder } from '../services/api/quickbiteApi';
+import { quickbiteApi,type ApiOrder } from '../../services/api/quickbiteApi';
 
-export default function CoreOrderVerificationPage(){
+export function CoreOrderVerificationPage(){
  const [params]=useSearchParams();const [order,setOrder]=useState<ApiOrder|null>(null);const [error,setError]=useState('');const [loading,setLoading]=useState(true);
  useEffect(()=>{const code=params.get('code')||'';if(!code){setError('Código de recogida no proporcionado.');setLoading(false);return}void quickbiteApi().verifyPublicOrder(code).then(r=>setOrder(r.order)).catch(e=>setError(e instanceof Error?e.message:'Código no encontrado.')).finally(()=>setLoading(false))},[params]);
  if(loading)return <main className="grid min-h-screen place-items-center bg-slate-50"><Clock3 className="h-8 w-8 animate-pulse text-slate-500"/></main>;
