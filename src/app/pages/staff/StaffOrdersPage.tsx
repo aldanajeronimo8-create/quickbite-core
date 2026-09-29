@@ -97,7 +97,7 @@ export function StaffOrdersPage() {
                     <p className="text-xs text-slate-500">Código {order.pickup_code}</p>
                     <p className="text-xs text-slate-500">{new Date(order.created_at).toLocaleString('es-CO')}</p>
                   </div>
-                  <span className="font-bold">{statusLabel[order.status]}</span>
+                  <span className="font-bold">{statusLabel[order.status as OrderStatus]}</span>
                   <span className="font-bold">{order.total.toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 })}</span>
                   <div className="flex flex-wrap items-center gap-2">
                     {next && actionLabel && (
