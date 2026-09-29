@@ -102,6 +102,12 @@ export class QuickBiteApi {
   menu() { return this.request<{ items: MenuItem[] }>('/v1/menu'); }
   me() { return this.request<{ user: ApiUser }>('/v1/me'); }
   orders() { return this.request<{ items: ApiOrder[] }>('/v1/orders'); }
+  wallet() { return this.request<{ balance: number }>('/v1/wallet'); }
+  notifications() { return this.request<{ items: Array<{ id: string; user_id: string; order_id?: string | null; type?: string; title: string; body: string; read_at?: string | null; created_at: string }> }>('/v1/notifications'); }
+  markNotificationsRead(notificationIds?: string[]) { return this.request<{ updated: number }>('/v1/notifications/read', { method: 'POST', body: JSON.stringify({ notificationIds: notificationIds ?? [] }) }); }
+  favorites() { return this.request<{ items: Array<{ product_id: string; name: string; description: string | null; price: number; category_name: string | null }> }>('/v1/favorites'); }
+  addFavorite(productId: string) { return this.request<{ productId: string }>('/v1/favorites', { method: 'POST', body: JSON.stringify({ productId }) }); }
+  removeFavorite(productId: string) { return this.request<void>('/v1/favorites/' + productId, { method: 'DELETE' }); }
   preferences() { return this.request<{ preferences: { theme: 'light' | 'dark' | 'system' } }>('/v1/preferences'); }
   updatePreferences(theme: 'light' | 'dark' | 'system') { return this.request<{ preferences: { theme: 'light' | 'dark' | 'system' } }>('/v1/preferences', { method: 'PUT', body: JSON.stringify({ theme }) }); }
   adminUsers() { return this.request<{ items: Array<ApiUser & { active: boolean; created_at: string; updated_at: string }> }>('/v1/admin/users'); }
