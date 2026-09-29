@@ -1,4 +1,4 @@
-export type RuntimeMode = 'core';
+export type RuntimeMode = 'supabase';
 export type AppEnvironment = 'development' | 'staging' | 'production';
 
 export const appConfig = {
@@ -6,13 +6,14 @@ export const appConfig = {
   appVersion: import.meta.env.VITE_APP_VERSION ?? '1.0.0',
   appEnv: (import.meta.env.VITE_APP_ENV ?? 'development') as AppEnvironment,
   publicAppUrl: import.meta.env.VITE_PUBLIC_APP_URL ?? '',
-  runtimeMode: 'core' as RuntimeMode,
+  runtimeMode: (import.meta.env.VITE_RUNTIME_MODE ?? 'supabase') as RuntimeMode,
   apiBaseUrl: import.meta.env.VITE_API_BASE_URL ?? '',
-  supabaseUrl: '',
-  supabaseAnonKey: '',
-  supabaseStorageBucket: '',
-  supabaseRealtimeEnabled: false,
+  supabaseUrl: import.meta.env.VITE_SUPABASE_URL ?? '',
+  supabaseAnonKey: import.meta.env.VITE_SUPABASE_ANON_KEY ?? '',
+  supabaseStorageBucket: import.meta.env.VITE_SUPABASE_STORAGE_BUCKET ?? '',
+  supabaseRealtimeEnabled: import.meta.env.VITE_SUPABASE_REALTIME_ENABLED !== 'false',
   dataRefreshIntervalMs: Number(import.meta.env.VITE_DATA_REFRESH_INTERVAL_MS ?? 5000),
+  // Password recovery is handled exclusively by Supabase Auth email links.
   passwordResetMode: 'email' as const,
   monitoringDsn: import.meta.env.VITE_MONITORING_DSN ?? '',
   monitoringProvider: import.meta.env.VITE_MONITORING_PROVIDER ?? 'console',
@@ -25,5 +26,5 @@ export const appConfig = {
   cdnUrl: import.meta.env.VITE_CDN_URL ?? '',
 };
 
-export function hasSupabaseConfig() { return false; }
-export function needsFirstRunSetup() { return !appConfig.apiBaseUrl; }
+export function hasSupabaseConfig() { return Boolean(appConfig.supabaseUrl && appConfig.supabaseAnonKey); }
+export function needsFirstRunSetup() { return appConfig.runtimeMode === 'supabase' && !hasSupabaseConfig(); }
