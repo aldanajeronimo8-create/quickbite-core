@@ -27,7 +27,7 @@ export function StaffFeatureCenter() {
             <h2 className="mt-4 font-black">Pedidos</h2>
             <p className="mt-1 text-sm text-slate-600">Consultar la cola de pedidos y atender la operación de cafetería.</p>
           </Link>
-          <Link to="/staff/orders" className={card}>
+          <Link to="/staff/verification" className={card}>
             <QrCode className="h-6 w-6 text-emerald-700" />
             <h2 className="mt-4 font-black">Verificación de recogidas</h2>
             <p className="mt-1 text-sm text-slate-600">Acceder a los pedidos y comprobar el código de recogida.</p>
