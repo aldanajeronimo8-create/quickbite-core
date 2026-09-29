@@ -15,9 +15,9 @@ For any non-trivial change, follow this order:
 
 ## QuickBite-specific quality gates
 
-- **Authentication/authorization:** never trust client-side role state alone. Validate the authenticated Supabase session and enforce authorization with Supabase/RLS where applicable.
+- **Authentication/authorization:** never trust client-side role state alone. Validate the authenticated Core session and enforce authorization in the Core API and PostgreSQL.
 - **Data integrity:** balance, top-up, order, payment, stock, and export operations must be consistent and auditable.
-- **External integrations:** changes involving Supabase, Google Sheets, Vercel, or GitHub must include failure handling and verification.
+- **External integrations:** changes involving Firebase, QuickBite Core, PostgreSQL, Vercel, or GitHub must include failure handling and verification.
 - **UI:** preserve responsive behavior, accessibility, loading/error/empty states, and the existing QuickBite design system.
 - **Testing:** run typecheck, lint, unit tests, build, and relevant E2E coverage for behavior changes. Do not claim a change is verified until the available evidence supports it.
 - **Production:** after deployment, confirm the deployed application responds successfully and check relevant runtime/watchdog signals.
