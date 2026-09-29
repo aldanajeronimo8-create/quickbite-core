@@ -113,6 +113,8 @@ export const useAuthStore = create<AuthState>((set) => ({
       const { user } = await client.me();
       const profile = profileFromSession({
         accessToken: client.getSession()!.accessToken,
+        refreshToken: client.getSession()!.refreshToken,
+        expiresIn: client.getSession()!.expiresIn,
         user,
       });
       set({ user: profile, session: { token: client.getSession()!.accessToken }, loading: false });
