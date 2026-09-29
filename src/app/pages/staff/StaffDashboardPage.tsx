@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { ClipboardList } from 'lucide-react';
+import { ClipboardList, LayoutGrid } from 'lucide-react';
 import { useAuthStore } from '../../../store/authStore';
 
 export function StaffDashboardPage() {
@@ -14,7 +14,7 @@ export function StaffDashboardPage() {
           <h1 className="mt-1 text-3xl font-black tracking-tight">Operaciones de cafetería</h1>
           <p className="mt-2 text-sm text-slate-600">Sesión operativa de {user?.full_name ?? 'personal autorizado'}.</p>
           </div>
-          <Link to="/choose-role" className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold shadow-sm">Cambiar espacio</Link>
+          <div className="flex flex-wrap items-center gap-2"><Link to="/staff/features" className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold shadow-sm"><LayoutGrid className="h-4 w-4" />Funciones</Link><Link to="/choose-role" className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold shadow-sm">Cambiar espacio</Link></div>
         </header>
 
         <section className="grid gap-4 md:grid-cols-2" aria-label="Operaciones disponibles">
