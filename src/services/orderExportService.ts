@@ -1,5 +1,5 @@
 import { appConfig } from '../config/appConfig';
-import type { Order } from '../lib/supabase';
+import type { Order } from '../types/domain';
 import * as XLSX from '@redoper1/xlsx-js-style';
 
 export interface ActiveSalesExportResult { count: number; batchId: string; }
