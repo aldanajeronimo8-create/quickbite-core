@@ -1,5 +1,5 @@
 import { useEffect,useMemo,useState } from 'react';
-import { ArrowLeft,Check,RefreshCw,ShieldCheck,X,Power,Clock3,BarChart3,Gift,Package,WalletCards } from 'lucide-react';
+import { ArrowLeft,BarChart3,Check,Gift,Power,RefreshCw,ShieldCheck,X } from 'lucide-react';
 import { Link,useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
 import { quickbiteApi,type ApiOrder } from '../../../services/api/quickbiteApi';
